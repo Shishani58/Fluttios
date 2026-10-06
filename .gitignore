@@ -1,0 +1,29 @@
+# Local builds and workspace state
+.build/
+dist/
+.DS_Store
+.serena/
+*.xcuserstate
+xcuserdata/
+# Local design drafts and verification reports (may contain private project data)
+design-previews/
+output/
+docs/verification.md
+docs/*.log
+docs/images/*
+!docs/images/projects-light.png
+!docs/images/projects-dark.png
+!docs/images/devices.png
+!docs/images/tools.png
+!docs/images/general.png
+!docs/images/panel.png
+# Credentials and signing material
+.env
+.env.*
+!.env.example
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.key
+*.pem
