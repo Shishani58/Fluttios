@@ -1,0 +1,79 @@
+name: Publish macOS DMG
+
+on:
+  push:
+    tags: ['v*']
+    branches: [main]
+    paths: ['.github/workflows/release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fluttios-dmg-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Select immutable release source
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(tr -d '\r\n' < VERSION)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          tag="v$version"
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            [[ "$GITHUB_REF_NAME" == "$tag" ]]
+          fi
+          git rev-parse --verify "refs/tags/$tag"
+          # Packaging may be added after the first source tag; app source must match.
+          git diff --exit-code "$tag" HEAD -- Sources Resources Package.swift Fluttios.xcodeproj scripts/build-app.sh scripts/check-version.sh
+          mkdir -p .build
+          cp scripts/build-dmg.sh .build/build-dmg.sh
+          cp .github/release-notes.md .build/release-notes.md
+          git checkout --detach "$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Verify and test
+        run: |
+          ./scripts/check-version.sh
+          xcrun swift test --build-system native
+          ./scripts/verify-panel-presentation.sh
+      - name: Build universal DMG
+        env:
+          SIGNING_IDENTITY: '-'
+          ARCHITECTURES: 'arm64 x86_64'
+        run: ./.build/build-dmg.sh
+      - name: Save build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Fluttios-${{ steps.version.outputs.version }}-DMG
+          path: |
+            dist/*.dmg
+            dist/*.sha256
+          if-no-files-found: error
+      - name: Publish release downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/*.dmg dist/*.sha256 --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" dist/*.dmg dist/*.sha256 \
+              --verify-tag --title "Fluttios $RELEASE_VERSION" \
+              --notes-file .build/release-notes.md --repo "$GITHUB_REPOSITORY"
+          fi

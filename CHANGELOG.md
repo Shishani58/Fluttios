@@ -2,7 +2,7 @@
 
 ## [1.0.0] — 2026-10-07
 
-First public source release of Fluttios. / Первый публичный релиз исходного кода Fluttios.
+First public release of Fluttios. / Первый публичный релиз Fluttios.
 
 - Native macOS panel with automatic Simulator / Device Hub window attachment and floating mode.
   Нативная панель macOS с привязкой к Simulator / Device Hub и свободным положением.
@@ -16,5 +16,8 @@ First public source release of Fluttios. / Первый публичный ре�
   Английский/русский интерфейс, помощник автозапуска, светлая/тёмная темы и версия в настройках.
 - Bilingual documentation and screenshots with fictional demo data.
   Документация на двух языках и скриншоты с вымышленными данными.
+
+- Universal DMG download, SHA-256 checksum and automated GitHub release packaging.
+  Универсальный DMG, контрольная сумма SHA-256 и автоматическая упаковка релиза на GitHub.
 
 [1.0.0]: https://github.com/Shishani58/Fluttios/tree/v1.0.0

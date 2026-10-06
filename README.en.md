@@ -16,6 +16,14 @@
 
 Version **1.0.0**, build **1**. MIT licensed source. Build a local app using the instructions below; a version tag does not imply a signed, notarized installer is available.
 
+## Download DMG
+
+[**Download Fluttios 1.0.0 for macOS (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.0/Fluttios-1.0.0.dmg) · [Release notes and checksum](https://github.com/Shishani58/Fluttios/releases/tag/v1.0.0)
+
+Supports Apple Silicon and Intel, macOS 14+. Open the DMG and drag **Fluttios.app** to **Applications**. Flutter SDK and full Xcode are required to run projects.
+
+This build uses an **ad-hoc signature without Apple notarization**. macOS may block the first launch; the release notes include details and Apple's guidance. The download contains no personal developer certificate.
+
 ## Screenshots
 
 These are captures of actual Fluttios SwiftUI views using **fictional demo data**. They show no private application screens, real project paths, logs, UDIDs or working project names. They demonstrate the interface, not successful execution of the pictured projects. The UI is shown in Russian; English is also available.
@@ -96,6 +104,8 @@ NOTARY_PROFILE="fluttios-notary" \
 This enables Hardened Runtime, secure timestamps, notarization, stapling and Gatekeeper validation, producing an app and ZIP in `dist` only after success. Failures preserve the previous app. Normal local builds are not sent to Apple. No notarized installer is published for this source release.
 
 </details>
+
+Build a DMG with `./scripts/build-dmg.sh`; the image and SHA-256 checksum are saved in `dist`. GitHub Actions builds the exact `vX.Y.Z` source tag with ad-hoc signing, runs checks and publishes the DMG/checksum to Releases. The workflow runs on tags or manually; the initial 1.0.0 publication also runs when the workflow is added to main. Packaging changes after a tag are allowed only when application source and build metadata are unchanged.
 
 ## Verification
 
