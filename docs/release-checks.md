@@ -21,3 +21,15 @@ Local logs, verification notes, draft screenshots, workspace state and built/sig
 Real Flutter Run/Reload/Restart flows, physical devices, Intel execution, macOS 14 execution and Apple notarization were not repeated for this documentation/version release. No notarized binary is published. The screenshot fixture does not run Flutter projects or alter the user's project archive.
 
 В этом релизе документации/версии повторно не проверялись реальные Run/Reload/Restart Flutter, физические устройства, запуск на Intel/macOS 14 и notarization Apple. Нотарифицированный бинарный файл не публикуется. Демонстрационные снимки не запускают проекты и не меняют архив проектов пользователя.
+
+## DMG download / Скачивание DMG
+
+Universal DMG packaging was added after the 1.0.0 source tag. GitHub Actions checked that application source/build metadata match the tag, checked out the tag, passed tests, built the universal app/helper with ad-hoc signing, and published the DMG and SHA-256 checksum to the 1.0.0 release. No private developer certificate is included.
+
+Упаковка DMG добавлена после исходного тега 1.0.0. GitHub Actions проверил совпадение кода/метаданных с тегом, переключился на тег, выполнил тесты, собрал универсальные app/helper с ad-hoc подписью и опубликовал DMG с SHA-256 в релизе 1.0.0. Личный сертификат разработчика не включён.
+
+The local image mounted successfully, contained only the app, Applications symlink, license and installation instructions, and passed signature/architecture/checksum checks. Public DMG and checksum downloads were verified after publication.
+
+Локальный образ успешно смонтирован: внутри только приложение, ссылка Applications, лицензия и инструкция. Проверены подписи, обе архитектуры и контрольная сумма. После публикации проверено скачивание публичного DMG и файла SHA-256.
+
+[Release / Релиз](https://github.com/Shishani58/Fluttios/releases/tag/v1.0.0) · [Build / Сборка](https://github.com/Shishani58/Fluttios/actions/runs/37549380690)

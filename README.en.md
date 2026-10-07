@@ -14,7 +14,7 @@
 
 **Fluttios is a native macOS utility for Flutter development.** Keep a compact control panel beside Simulator / Device Hub, or use it as a floating panel. Switch projects, run your app and update Dart code without repeatedly returning to Terminal or your IDE. Each project has its own independent session.
 
-Version **1.0.0**, build **1**. MIT licensed source. Build a local app using the instructions below; a version tag does not imply a signed, notarized installer is available.
+Version **1.0.0**, build **1**. MIT licensed source. Download the universal DMG below, or build from source. The download uses ad-hoc signing without Apple notarization.
 
 ## Download DMG
 
