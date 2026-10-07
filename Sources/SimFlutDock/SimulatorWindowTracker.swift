@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 import Combine
-import FluttiosCore
+import SimFlutDockCore
 
 struct SimulatorWindow: Identifiable {
     let id: UUID
@@ -160,7 +160,7 @@ struct SimulatorWindow: Identifiable {
                 let title: String = read(element, kAXTitleAttribute) ?? "Simulator"
                 guard let position: AXValue = read(element, kAXPositionAttribute), let size: AXValue = read(element, kAXSizeAttribute),
                       AXValueGetType(position) == .cgPoint, AXValueGetType(size) == .cgSize else {
-                    NSLog("Fluttios: AX window has no frame: %@", title); continue
+                    NSLog("SimFlutDock: AX window has no frame: %@", title); continue
                 }
                 var point = CGPoint.zero, dimensions = CGSize.zero
                 AXValueGetValue(position, .cgPoint, &point); AXValueGetValue(size, .cgSize, &dimensions)
@@ -179,7 +179,7 @@ struct SimulatorWindow: Identifiable {
             }
             let report = L10n.text("{0}: AXWindows={1}, found {2}, with coordinates {3}", "\(simulator.localizedName ?? "Simulator")", "\(windowError.rawValue)", "\(elements.count)", "\(usableCount)")
             reports.append(report)
-            if usableCount == 0 { NSLog("Fluttios: %@", report) }
+            if usableCount == 0 { NSLog("SimFlutDock: %@", report) }
             if let observer = host.observer {
                 host.watched.removeAll { element, name in
                     guard !CFEqual(element, host.application), !elements.contains(where: { CFEqual($0, element) }) else { return false }
@@ -198,7 +198,7 @@ struct SimulatorWindow: Identifiable {
         let serverIDs = Set(newWindows.compactMap(\.windowServerID))
         let fast = WindowServerObserver.shared.watch(serverIDs)
         if ProcessInfo.processInfo.arguments.contains("--verify-panel-follow") {
-            NSLog("Fluttios follow: trusted=%d, windows=%d, WindowServer=%d, ids=%@", trusted, windows.count, fast, serverIDs.description)
+            NSLog("SimFlutDock follow: trusted=%d, windows=%d, WindowServer=%d, ids=%@", trusted, windows.count, fast, serverIDs.description)
         }
         onChange?()
     }

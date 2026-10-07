@@ -1,7 +1,7 @@
 import XCTest
 import Darwin
 import Combine
-@testable import FluttiosCore
+@testable import SimFlutDockCore
 
 /// Opt-in: requires fixtures from scripts/create-probes.sh and two booted iOS devices.
 final class IntegrationTests: XCTestCase {
@@ -9,9 +9,9 @@ final class IntegrationTests: XCTestCase {
         let deadline = Date().addingTimeInterval(timeout)
         while !condition() {
             if session.state == .error || session.state == .disconnected {
-                throw FluttiosError.message(session.logs.suffix(30).map { $0.text }.joined(separator: "\n"))
+                throw SimFlutDockError.message(session.logs.suffix(30).map { $0.text }.joined(separator: "\n"))
             }
-            guard Date() < deadline else { throw FluttiosError.timeout(session.logs.suffix(10).map { $0.text }.joined(separator: "\n")) }
+            guard Date() < deadline else { throw SimFlutDockError.timeout(session.logs.suffix(10).map { $0.text }.joined(separator: "\n")) }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
     }
@@ -53,7 +53,7 @@ final class IntegrationTests: XCTestCase {
             let starts = sa.logs.filter { $0.text.contains("PROBE_INIT=0") }.count
             let bReloads = sb.logs.filter { $0.text.contains("PROBE_REASSEMBLE=") }.count
             print("REAL: Hot Reload A retains counter")
-            try original.replacingOccurrences(of: "Fluttios protocol probe", with: "Fluttios reload probe").write(to: source, atomically: true, encoding: .utf8)
+            try original.replacingOccurrences(of: "SimFlutDock protocol probe", with: "SimFlutDock reload probe").write(to: source, atomically: true, encoding: .utf8)
             sa.restart(full: false)
             try await wait(sa) { sa.state == .running && sa.logs.contains { $0.text.contains("PROBE_REASSEMBLE=") } }
             let countLine = sa.logs.last { $0.text.contains("PROBE_REASSEMBLE=") }!.text

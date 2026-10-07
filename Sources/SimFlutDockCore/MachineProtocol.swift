@@ -59,7 +59,7 @@ public struct MachineParser {
                 let timer = Task { [weak self] in
                     do { try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000)) }
                     catch { return }
-                    self?.fail(id, error: FluttiosError.timeout(method))
+                    self?.fail(id, error: SimFlutDockError.timeout(method))
                 }
                 pending[id] = Pending(continuation: continuation, timer: timer)
                 do { try write(data) } catch { fail(id, error: error) }
@@ -70,13 +70,13 @@ public struct MachineParser {
         guard let id = message["id"] as? Int, let item = pending.removeValue(forKey: id) else { return false }
         item.timer.cancel()
         if let error = message["error"] {
-            item.continuation.resume(throwing: FluttiosError.message("Flutter: \(error)"))
+            item.continuation.resume(throwing: SimFlutDockError.message("Flutter: \(error)"))
         } else {
             item.continuation.resume(returning: message)
         }
         return true
     }
-    public func close(error: Error = FluttiosError.exited) {
+    public func close(error: Error = SimFlutDockError.exited) {
         for id in Array(pending.keys) { fail(id, error: error) }
     }
     private func fail(_ id: Int, error: Error) {

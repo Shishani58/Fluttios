@@ -1,16 +1,16 @@
 <div align="center">
-  <img src="Resources/AppIcon.png" width="96" alt="Fluttios">
-  <h1>Fluttios</h1>
+  <img src="Resources/AppIcon.png" width="96" alt="SimFlutDock">
+  <h1>SimFlutDock</h1>
   <p>Управляйте Flutter прямо рядом с симулятором.</p>
   <p><a href="README.en.md">English</a> · <a href="CHANGELOG.md">История изменений</a> · <a href="LICENSE">MIT</a></p>
-  <img src="docs/images/panel.png" width="630" alt="Панель Fluttios с кнопками Run, Reload, Restart и Stop">
+  <img src="docs/images/panel.png" width="630" alt="Панель SimFlutDock с кнопками Run, Reload, Restart и Stop">
 </div>
 
 Нативная утилита macOS: запускайте Flutter-проекты, делайте Hot Reload и читайте логи без перехода в Terminal или IDE.
 
 ## Установка
 
-[**Скачать Fluttios 1.0.1 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.1/Fluttios-1.0.1.dmg)
+[**Скачать SimFlutDock 1.0.2 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.2/SimFlutDock-1.0.2.dmg)
 
 Нужны **macOS 14+**, **Flutter SDK** и полный **Xcode**. Поддерживаются Apple Silicon и Intel. Откройте DMG и перетащите приложение в **Applications**.
 
@@ -26,9 +26,9 @@
 
 ## Быстрый старт
 
-1. Откройте Fluttios → иконка в строке меню → **Настройки → Проекты → Открыть проект**. Выберите папку с `pubspec.yaml`.
+1. Откройте SimFlutDock → иконка в строке меню → **Настройки → Проекты → Открыть проект**. Выберите папку с `pubspec.yaml`.
 2. Выберите устройство и нажмите **Run**. После изменения Dart-кода используйте **Reload**, для сброса состояния — **Restart**.
-3. Для привязки панели разрешите Fluttios в **Настройках системы → Конфиденциальность и безопасность → Универсальный доступ**.
+3. Для привязки панели разрешите SimFlutDock в **Настройках системы → Конфиденциальность и безопасность → Универсальный доступ**.
 
 Hot Reload и Hot Restart работают в Debug. После изменения нативного кода или плагинов используйте **Stop → Run**.
 
@@ -38,7 +38,7 @@ Hot Reload и Hot Restart работают в Debug. После изменени
 git clone https://github.com/Shishani58/Fluttios.git
 cd Fluttios
 ./scripts/build-app.sh
-open dist/Fluttios.app
+open dist/SimFlutDock.app
 ```
 
 Для сборки DMG: `./scripts/build-dmg.sh`.

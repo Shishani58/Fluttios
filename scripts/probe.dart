@@ -27,7 +27,7 @@ class _ProbeState extends State<Probe> {
   void dispose() { timer?.cancel(); super.dispose(); }
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text("Fluttios protocol probe")),
+    appBar: AppBar(title: const Text("SimFlutDock protocol probe")),
     body: Center(child: Text("State: $count", style: const TextStyle(fontSize: 32))),
   );
 }

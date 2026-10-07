@@ -1,6 +1,6 @@
 import SwiftUI
 import AppKit
-import FluttiosCore
+import SimFlutDockCore
 
 private enum PickerMetrics {
     static let width: CGFloat = 360
@@ -777,7 +777,7 @@ struct PanelView: View {
                     Toggle(L10n.text("Free Position"), isOn: $model.freePanel)
                     Button(L10n.text("Reset Position")) { model.resetPanel() }
                     Menu(L10n.text("Attach to Simulator Window")) {
-                        if model.tracker.windows.isEmpty { Text(model.tracker.trusted ? L10n.text("No open Simulator windows") : L10n.text("Allow access in Fluttios settings")) }
+                        if model.tracker.windows.isEmpty { Text(model.tracker.trusted ? L10n.text("No open Simulator windows") : L10n.text("Allow access in SimFlutDock settings")) }
                         ForEach(model.tracker.windows) { window in
                             Button("\(window.title) (\(Int(window.frame.minX)), \(Int(window.frame.minY)))") { model.bindWindow(window.id) }
                         }
@@ -786,7 +786,7 @@ struct PanelView: View {
                     Button(L10n.text("Refresh Attachment")) { model.tracker.refresh() }
                 } label: { Label(L10n.text("Panel Position"), systemImage: "rectangle.3.group") }
                 Divider()
-                Button { model.quitApp() } label: { Label(L10n.text("Quit Fluttios"), systemImage: "power") }
+                Button { model.quitApp() } label: { Label(L10n.text("Quit SimFlutDock"), systemImage: "power") }
             } label: {
                 Color.clear.frame(width: 18, height: 18)
             }
@@ -918,7 +918,7 @@ struct SettingsView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "iphone.gen3.radiowaves.left.and.right")
                         .font(.system(size: 24)).foregroundStyle(Color.blue).accessibilityHidden(true)
-                    Text("Fluttios").font(.system(size: 23, weight: .bold))
+                    Text("SimFlutDock").font(.system(size: 23, weight: .bold))
                 }.padding(.horizontal, 22).padding(.top, 30).padding(.bottom, 26)
                 Divider().padding(.horizontal, 16)
                 VStack(spacing: 6) {
@@ -989,7 +989,7 @@ struct SettingsView: View {
                 HStack {
                     Text(L10n.text("Settings are saved automatically"))
                     Spacer()
-                    Text("Fluttios")
+                    Text("SimFlutDock")
                 }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 28).frame(height: 40)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
@@ -1105,7 +1105,7 @@ struct SettingsView: View {
                     }
                 }
                 Divider()
-                SettingsNote(L10n.text("Enable Fluttios in System Settings → Privacy & Security → Accessibility. Access is detected automatically."))
+                SettingsNote(L10n.text("Enable SimFlutDock in System Settings → Privacy & Security → Accessibility. Access is detected automatically."))
                 if !model.tracker.trusted {
                     Divider()
                     HStack {
@@ -1122,16 +1122,16 @@ struct SettingsView: View {
 
     private var generalSettings: some View {
         VStack(alignment: .leading, spacing: 28) {
-            SettingsSection("Fluttios") {
+            SettingsSection("SimFlutDock") {
                 SettingsField(L10n.text("Version")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.1")
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.2")
                         .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .textSelection(.enabled)
                 }
                 Divider()
                 SettingsField(L10n.text("Build")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "2")
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "3")
                         .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
@@ -1250,7 +1250,7 @@ private struct SimulatorToolsSettings: View {
         guard var link = editingLink, var current = model.store.projects.first(where: { $0.id == project.id }) else { return }
         do {
             link.name = linkName.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !link.name.isEmpty else { throw FluttiosError.message(L10n.text("Enter a link name.")) }
+            guard !link.name.isEmpty else { throw SimFlutDockError.message(L10n.text("Enter a link name.")) }
             link.url = try SavedDeepLink.validatedURL(linkURL)
             if let index = current.deepLinks.firstIndex(where: { $0.id == link.id }) { current.deepLinks[index] = link }
             else { current.deepLinks.append(link) }

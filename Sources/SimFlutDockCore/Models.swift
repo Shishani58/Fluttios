@@ -37,11 +37,11 @@ public struct LaunchConfiguration: Codable, Equatable {
         let reserved = ["--debug", "--release", "--profile", "--machine", "--no-machine", "--start-paused", "--no-resident", "--device-id", "-d", "--target", "-t", "--flavor", "--use-application-binary", "--help", "-h"]
         guard !entrypoint.isEmpty, !entrypoint.hasPrefix("-"), !scheme.isEmpty,
               (buildConfiguration.lowercased() == mode.rawValue || buildConfiguration.lowercased().hasPrefix(mode.rawValue + "-")) else {
-            throw FluttiosError.message(L10n.text("Specify an entrypoint, scheme, and {0} or {1}-flavor configuration.", "\(mode.title)", "\(mode.title)"))
+            throw SimFlutDockError.message(L10n.text("Specify an entrypoint, scheme, and {0} or {1}-flavor configuration.", "\(mode.title)", "\(mode.title)"))
         }
-        if let device, !mode.supports(device) { throw FluttiosError.message(L10n.text("{0} is unavailable on this simulator. Choose Debug or a physical device.", "\(mode.title)")) }
+        if let device, !mode.supports(device) { throw SimFlutDockError.message(L10n.text("{0} is unavailable on this simulator. Choose Debug or a physical device.", "\(mode.title)")) }
         guard !arguments.contains(where: { arg in reserved.contains(where: { arg == $0 || arg.hasPrefix($0 + "=") }) || arg == "--" || (arg.hasPrefix("-d") && !arg.hasPrefix("--")) || (arg.hasPrefix("-t") && !arg.hasPrefix("--")) }) else {
-            throw FluttiosError.message(L10n.text("The app sets the launch mode, device, entrypoint, and flavor. Remove conflicting arguments."))
+            throw SimFlutDockError.message(L10n.text("The app sets the launch mode, device, entrypoint, and flavor. Remove conflicting arguments."))
         }
         var result = ["run", "--machine", "--" + mode.rawValue, "--target", entrypoint]
         if scheme != "Runner" { result += ["--flavor", scheme] }
@@ -62,7 +62,7 @@ public struct SavedDeepLink: Codable, Identifiable, Equatable {
               let url = URL(string: value), let scheme = url.scheme, !scheme.isEmpty,
               !["file", "data", "javascript"].contains(scheme.lowercased()),
               (!["http", "https"].contains(scheme.lowercased()) || !(url.host ?? "").isEmpty) else {
-            throw FluttiosError.message(L10n.text("Enter a complete URL with a scheme, such as myapp://profile or https://example.com/profile."))
+            throw SimFlutDockError.message(L10n.text("Enter a complete URL with a scheme, such as myapp://profile or https://example.com/profile."))
         }
         return url.absoluteString
     }
@@ -173,7 +173,7 @@ public enum SessionState: String, Codable {
     public var canRestart: Bool { self == .running }
 }
 
-public enum FluttiosError: LocalizedError {
+public enum SimFlutDockError: LocalizedError {
     case message(String), timeout(String), exited
     public var errorDescription: String? {
         switch self {

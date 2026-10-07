@@ -7,7 +7,7 @@ public struct ToolResult {
     public let stderr: Data
     public var text: String { String(decoding: stdout + stderr, as: UTF8.self) }
     public func checked() throws -> ToolResult {
-        guard status == 0 else { throw FluttiosError.message(text.isEmpty ? L10n.text("Tool exited with code {0}.", "\(status)") : text) }
+        guard status == 0 else { throw SimFlutDockError.message(text.isEmpty ? L10n.text("Tool exited with code {0}.", "\(status)") : text) }
         return self
     }
 }
@@ -85,7 +85,7 @@ public enum ToolRunner {
                 return try await Task.detached { try job.run(executable: executable, arguments: arguments, directory: directory, environment: environment) }.value
             } catch is CancellationError {
                 if Task.isCancelled { throw CancellationError() }
-                throw FluttiosError.timeout(executable)
+                throw SimFlutDockError.timeout(executable)
             }
         }, onCancel: { job.cancel() })
     }
@@ -122,11 +122,11 @@ public enum FlutterSDKResolver {
             let executable = expanded.hasSuffix("/flutter") && FileManager.default.isExecutableFile(atPath: expanded) ? expanded : expanded + "/bin/flutter"
             if FileManager.default.isExecutableFile(atPath: executable) { return URL(fileURLWithPath: executable).resolvingSymlinksInPath().path }
         }
-        throw FluttiosError.message(L10n.text("Flutter SDK not found. Select the SDK folder in settings. For FVM, select the project's .fvm/flutter_sdk or an installed SDK version."))
+        throw SimFlutDockError.message(L10n.text("Flutter SDK not found. Select the SDK folder in settings. For FVM, select the project's .fvm/flutter_sdk or an installed SDK version."))
     }
     public static func check(_ executable: String) async throws -> String {
         let flutter = try await ToolRunner.run(executable, ["--version", "--machine"], environment: environment(sdk: executable), timeout: 45).checked()
-        guard developerDirectory() != nil else { throw FluttiosError.message(L10n.text("Full Xcode installation not found. Install and open Xcode, accept the license, and install an iOS Simulator runtime.")) }
+        guard developerDirectory() != nil else { throw SimFlutDockError.message(L10n.text("Full Xcode installation not found. Install and open Xcode, accept the license, and install an iOS Simulator runtime.")) }
         _ = try await ToolRunner.run("/usr/bin/xcrun", ["--find", "simctl"]).checked()
         return flutter.text
     }

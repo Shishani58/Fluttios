@@ -11,7 +11,7 @@ if [[ ! -d "${DEVELOPER_DIR:-}/Platforms/iPhoneSimulator.platform" ]]; then
   fi
 fi
 configuration=${CONFIGURATION:-release}
-app="${APP_OUTPUT:-$PWD/dist/Fluttios.app}"
+app="${APP_OUTPUT:-$PWD/dist/SimFlutDock.app}"
 distribution=${DISTRIBUTION:-0}
 architectures=${ARCHITECTURES:-"arm64 x86_64"}
 # Keep the certificate used by the installed local build. Ad-hoc signatures use
@@ -48,18 +48,18 @@ for architecture in $architectures; do
   case "$architecture" in arm64|x86_64) ;; *) echo "Unsupported architecture: $architecture" >&2; exit 1 ;; esac
   scratch="$PWD/.build/universal/$architecture"
   triple="$architecture-apple-macosx14.0"
-  xcrun swift build --scratch-path "$scratch" --triple "$triple" -c "$configuration" --product Fluttios
-  xcrun swift build --scratch-path "$scratch" --triple "$triple" -c "$configuration" --product FluttiosHelper
+  xcrun swift build --scratch-path "$scratch" --triple "$triple" -c "$configuration" --product SimFlutDock
+  xcrun swift build --scratch-path "$scratch" --triple "$triple" -c "$configuration" --product SimFlutDockHelper
   binary_dir=$(xcrun swift build --scratch-path "$scratch" --triple "$triple" -c "$configuration" --show-bin-path)
-  binaries+=("$binary_dir/Fluttios")
-  helper_binaries+=("$binary_dir/FluttiosHelper")
+  binaries+=("$binary_dir/SimFlutDock")
+  helper_binaries+=("$binary_dir/SimFlutDockHelper")
 done
 [[ ${#binaries[@]} -gt 0 ]] || { echo "ARCHITECTURES must not be empty." >&2; exit 1; }
-staged_app="$staging/Fluttios.app"
-helper="$staged_app/Contents/Library/LoginItems/FluttiosHelper.app"
+staged_app="$staging/SimFlutDock.app"
+helper="$staged_app/Contents/Library/LoginItems/SimFlutDockHelper.app"
 mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources" "$helper/Contents/MacOS"
-xcrun lipo -create "${binaries[@]}" -output "$staged_app/Contents/MacOS/Fluttios"
-xcrun lipo -create "${helper_binaries[@]}" -output "$helper/Contents/MacOS/FluttiosHelper"
+xcrun lipo -create "${binaries[@]}" -output "$staged_app/Contents/MacOS/SimFlutDock"
+xcrun lipo -create "${helper_binaries[@]}" -output "$helper/Contents/MacOS/SimFlutDockHelper"
 cp Resources/Info.plist "$staged_app/Contents/Info.plist"
 cp Resources/AppIcon.icns "$staged_app/Contents/Resources/AppIcon.icns"
 cp Resources/Helper-Info.plist "$helper/Contents/Info.plist"

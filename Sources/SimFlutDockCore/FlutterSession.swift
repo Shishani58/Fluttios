@@ -105,7 +105,7 @@ import Darwin
         process.environment = FlutterSDKResolver.environment(sdk: executable)
         process.standardInput = stdin; process.standardOutput = stdout; process.standardError = stderr
         client = MachineClient { [weak self] data in
-            guard let self, self.isAlive, let input = self.input else { throw FluttiosError.exited }
+            guard let self, self.isAlive, let input = self.input else { throw SimFlutDockError.exited }
             try input.write(contentsOf: data)
         }
         stdout.fileHandleForReading.readabilityHandler = { [weak self] handle in
@@ -212,7 +212,7 @@ import Darwin
             do {
                 let response = try await client.request("app.restart", params: ["appId": appID, "fullRestart": full, "pause": false, "reason": "manual", "debounce": false], timeout: 90)
                 if let result = response["result"] as? [String: Any], let code = result["code"] as? Int, code != 0 {
-                    throw FluttiosError.message(result["message"] as? String ?? L10n.text("Flutter could not update the app."))
+                    throw SimFlutDockError.message(result["message"] as? String ?? L10n.text("Flutter could not update the app."))
                 }
                 guard let self, self.isAlive, self.state != .stopping else { return }
                 if full { try await self.dartConsole?.resumePausedIsolates() }
@@ -220,7 +220,7 @@ import Darwin
                 self.state = .running; self.resetProgress(); self.append(full ? L10n.text("Hot restart completed.") : L10n.text("Hot reload completed."))
             } catch {
                 guard let self, self.isAlive, self.state != .stopping else { return }
-                if case FluttiosError.timeout = error { self.state = .disconnected } else { self.state = .running }
+                if case SimFlutDockError.timeout = error { self.state = .disconnected } else { self.state = .running }
                 self.error = error.localizedDescription; self.append(error.localizedDescription, error: true)
                 self.resetProgress()
             }

@@ -1,5 +1,12 @@
 # Changelog / История изменений
 
+## [1.0.2] — 2026-10-07
+
+- Renamed Fluttios to **SimFlutDock** across the app, build targets, Xcode project and release downloads.
+  Fluttios переименован в **SimFlutDock**: интерфейс, сборка, проект Xcode и загрузки релиза.
+- Existing projects and preferences are preserved using the original app identifiers and storage paths.
+  Сохранённые проекты и настройки доступны через прежние идентификаторы и пути хранения.
+
 ## [1.0.1] — 2026-10-07
 
 - Manual panel attachment now works independently of the selected Flutter device.
@@ -32,3 +39,5 @@ First public release of Fluttios. / Первый публичный релиз F
 [1.0.0]: https://github.com/Shishani58/Fluttios/tree/v1.0.0
 
 [1.0.1]: https://github.com/Shishani58/Fluttios/tree/v1.0.1
+
+[1.0.2]: https://github.com/Shishani58/Fluttios/tree/v1.0.2

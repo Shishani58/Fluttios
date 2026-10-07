@@ -1,5 +1,5 @@
 import XCTest
-@testable import FluttiosCore
+@testable import SimFlutDockCore
 
 final class AutomaticPanelBindingTests: XCTestCase {
     func testAlreadyOpenSimulatorAndRepeatedRefresh() {

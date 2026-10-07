@@ -49,7 +49,7 @@ public enum SimulatorHost {
         let hub = URL(fileURLWithPath: developer).deletingLastPathComponent().appendingPathComponent("Applications/DeviceHub.app")
         if FileManager.default.fileExists(atPath: classic.path) { return classic }
         if FileManager.default.fileExists(atPath: hub.path) { return hub }
-        throw FluttiosError.message(L10n.text("Simulator / Device Hub not found in the selected Xcode."))
+        throw SimFlutDockError.message(L10n.text("Simulator / Device Hub not found in the selected Xcode."))
     }
 }
 
@@ -57,18 +57,18 @@ public enum SimulatorToolCommand {
     public static func arguments(device: SimulatorDevice, operation: String, value: String) throws -> [String] {
         guard device.isIOSSimulator, device.isAvailable, device.state == "Booted", !device.id.isEmpty,
               device.id != "booted" else {
-            throw FluttiosError.message(L10n.text("Select a running iOS Simulator in project settings."))
+            throw SimFlutDockError.message(L10n.text("Select a running iOS Simulator in project settings."))
         }
         if operation == "openurl" {
             return ["simctl", "openurl", device.id, try SavedDeepLink.validatedURL(value)]
         }
         guard !value.isEmpty, value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil else {
-            throw FluttiosError.message(L10n.text("Could not determine the app's bundle identifier."))
+            throw SimFlutDockError.message(L10n.text("Could not determine the app's bundle identifier."))
         }
         switch operation {
         case "container": return ["simctl", "get_app_container", device.id, value, "data"]
         case "permissions": return ["simctl", "privacy", device.id, "reset", "all", value]
-        default: throw FluttiosError.message(L10n.text("Unknown simulator action."))
+        default: throw SimFlutDockError.message(L10n.text("Unknown simulator action."))
         }
     }
 }
@@ -109,7 +109,7 @@ public enum SimulatorToolCommand {
             let result = try await ToolRunner.run("/usr/bin/xcrun", ["simctl", "boot", device.id], timeout: 30)
             if result.status != 0 && !result.text.contains("current state: Booted") { _ = try result.checked() }
         }
-        guard let developer = FlutterSDKResolver.developerDirectory() else { throw FluttiosError.message(L10n.text("Install the full version of Xcode.")) }
+        guard let developer = FlutterSDKResolver.developerDirectory() else { throw SimFlutDockError.message(L10n.text("Install the full version of Xcode.")) }
         let simulatorURL = try SimulatorHost.applicationURL(developer: developer)
         let config = NSWorkspace.OpenConfiguration()
         if simulatorURL.lastPathComponent == "Simulator.app" { config.arguments = ["-CurrentDeviceUDID", device.id] }
@@ -127,7 +127,7 @@ public enum SimulatorToolCommand {
         let list = try JSONDecoder().decode(List.self, from: result.stdout)
         guard let device = list.devices.filter({ $0.key.contains("iOS") }).values.flatMap({ $0 })
             .first(where: { $0.id == id && $0.isAvailable }) else {
-            throw FluttiosError.message(L10n.text("The project's simulator is unavailable. Select an iOS Simulator in project settings."))
+            throw SimFlutDockError.message(L10n.text("The project's simulator is unavailable. Select an iOS Simulator in project settings."))
         }
         return device
     }
@@ -142,7 +142,7 @@ public enum SimulatorToolCommand {
         let path = String(decoding: result.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
         var directory: ObjCBool = false
         guard path.hasPrefix("/"), FileManager.default.fileExists(atPath: path, isDirectory: &directory), directory.boolValue else {
-            throw FluttiosError.message(L10n.text("Data folder unavailable. Install the app on the selected simulator using Run."))
+            throw SimFlutDockError.message(L10n.text("Data folder unavailable. Install the app on the selected simulator using Run."))
         }
         return URL(fileURLWithPath: path, isDirectory: true)
     }
@@ -159,13 +159,13 @@ public enum SimulatorToolCommand {
         let args = ["xcodebuild", "-project", "ios/Runner.xcodeproj", "-scheme", project.launch.scheme,
                     "-configuration", project.launch.buildConfiguration, "-sdk", device?.isPhysical == true ? "iphoneos" : "iphonesimulator", "-showBuildSettings", "-json"]
         let result = try await ToolRunner.run("/usr/bin/xcrun", args, directory: project.path, timeout: 90).checked()
-        guard let rows = try JSONSerialization.jsonObject(with: result.stdout) as? [[String: Any]] else { throw FluttiosError.message(L10n.text("Xcode did not return project settings.")) }
+        guard let rows = try JSONSerialization.jsonObject(with: result.stdout) as? [[String: Any]] else { throw SimFlutDockError.message(L10n.text("Xcode did not return project settings.")) }
         let ids = Set(rows.compactMap { row -> String? in
             guard let settings = row["buildSettings"] as? [String: Any], settings["PRODUCT_TYPE"] as? String == "com.apple.product-type.application" else { return nil }
             return settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
         })
         guard ids.count == 1, let id = ids.first, !id.isEmpty, !id.contains("$("), !id.contains(" ") else {
-            throw FluttiosError.message(L10n.text("Could not determine a unique bundle identifier. Check the scheme and Xcode configuration in project settings."))
+            throw SimFlutDockError.message(L10n.text("Could not determine a unique bundle identifier. Check the scheme and Xcode configuration in project settings."))
         }
         return id
     }

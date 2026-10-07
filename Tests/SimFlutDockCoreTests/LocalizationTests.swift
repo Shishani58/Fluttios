@@ -1,5 +1,5 @@
 import XCTest
-@testable import FluttiosCore
+@testable import SimFlutDockCore
 
 final class LocalizationTests: XCTestCase {
     func testAutomaticUsesSystemLanguageAndEnglishFallback() {
@@ -14,7 +14,7 @@ final class LocalizationTests: XCTestCase {
     }
 
     func testPreferenceDefaultsAndPersistsAllChoices() {
-        let suite = "Fluttios.LocalizationTests.\(UUID())"
+        let suite = "SimFlutDock.LocalizationTests.\(UUID())"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         XCTAssertEqual(L10n.preference(in: defaults), .automatic)

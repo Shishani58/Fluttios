@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 import Combine
-import FluttiosCore
+import SimFlutDockCore
 
 final class ControlPanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -44,7 +44,7 @@ final class ControlPanel: NSPanel {
         self.model = model
         panel = ControlPanel(contentRect: CGRect(x: 200, y: 200, width: 420, height: 48), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         super.init()
-        panel.title = "Fluttios"; panel.titleVisibility = .hidden; panel.titlebarAppearsTransparent = true
+        panel.title = "SimFlutDock"; panel.titleVisibility = .hidden; panel.titlebarAppearsTransparent = true
         panel.isFloatingPanel = false; panel.level = .floating; panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false; panel.isMovableByWindowBackground = false
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
@@ -165,7 +165,7 @@ final class ControlPanel: NSPanel {
             guard !dragging else { return }
             attachedWindow = nil
             model.attachmentStatus = model.standalonePanel ? (model.standaloneTarget ? L10n.text("Device • detached from Simulator") : L10n.text("Free Position")) :
-                (tracker.trusted ? L10n.text("Select a Simulator window in the settings menu") : L10n.text("macOS has not granted Accessibility access to this copy of Fluttios"))
+                (tracker.trusted ? L10n.text("Select a Simulator window in the settings menu") : L10n.text("macOS has not granted Accessibility access to this copy of SimFlutDock"))
             let anchor = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
             let visible = buttonWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? anchor
             let origin = CGPoint(x: max(visible.minX, min(anchor.midX - panel.frame.width / 2, visible.maxX - panel.frame.width)),
@@ -192,14 +192,14 @@ final class ControlPanel: NSPanel {
         if window != nil { allowWithoutSimulator = false }
         guard tracker.running ? ((!tracker.hidden && tracker.foreground) || (window == nil && allowWithoutSimulator)) : allowWithoutSimulator else {
             if panel.isVisible, ProcessInfo.processInfo.arguments.contains("--verify-panel-follow") {
-                NSLog("Fluttios follow: panel hidden with host, hidden=%d foreground=%d", tracker.hidden, tracker.foreground)
+                NSLog("SimFlutDock follow: panel hidden with host, hidden=%d foreground=%d", tracker.hidden, tracker.foreground)
             }
             panel.orderOut(nil); return
         }
         guard !dragging else { return }
         let matches = tracker.matching(model.selectedDevice, knownDevices: model.simulators.devices)
         if model.freePanel || !tracker.trusted {
-            attachedWindow = nil; model.attachmentStatus = tracker.trusted ? L10n.text("Free Position") : L10n.text("macOS has not granted Accessibility access to this copy of Fluttios")
+            attachedWindow = nil; model.attachmentStatus = tracker.trusted ? L10n.text("Free Position") : L10n.text("macOS has not granted Accessibility access to this copy of SimFlutDock")
             panel.showIfNeeded(); return
         }
         guard let window else {
@@ -230,7 +230,7 @@ final class ControlPanel: NSPanel {
         positionedOrigin = frame.origin
         positioning = true; panel.setFrame(frame, display: true); positioning = false
         if ProcessInfo.processInfo.arguments.contains("--verify-panel-follow") {
-            NSLog("Fluttios follow: simulator=%@ panel=%@ screen=%@ visible=%@ screens=%@", NSStringFromRect(windowFrame), NSStringFromRect(panel.frame), NSStringFromRect(screen?.frame ?? .zero), NSStringFromRect(visible), NSScreen.screens.map { "\(NSStringFromRect($0.frame)) visible=\(NSStringFromRect($0.visibleFrame))" }.joined(separator: "; "))
+            NSLog("SimFlutDock follow: simulator=%@ panel=%@ screen=%@ visible=%@ screens=%@", NSStringFromRect(windowFrame), NSStringFromRect(panel.frame), NSStringFromRect(screen?.frame ?? .zero), NSStringFromRect(visible), NSScreen.screens.map { "\(NSStringFromRect($0.frame)) visible=\(NSStringFromRect($0.visibleFrame))" }.joined(separator: "; "))
         }
     }
     private func intersectionArea(_ a: CGRect, _ b: CGRect) -> CGFloat { let rect = a.intersection(b); return rect.isNull ? 0 : rect.width * rect.height }

@@ -6,9 +6,9 @@ Please do not post credentials, project logs, private application screenshots or
 
 ## Local data / Локальные данные
 
-Fluttios stores project paths, device selections and saved deep links in `~/Library/Application Support/Fluttios/projects.json`; UI preferences are stored in macOS UserDefaults. Session logs live in memory and can contain output from your application. The app contains no telemetry or analytics uploader. Flutter, Xcode, your project and Apple's notarization service can make their own network requests.
+SimFlutDock stores project paths, device selections and saved deep links in `~/Library/Application Support/Fluttios/projects.json`; UI preferences are stored in macOS UserDefaults. Session logs live in memory and can contain output from your application. The app contains no telemetry or analytics uploader. Flutter, Xcode, your project and Apple's notarization service can make their own network requests.
 
-Fluttios хранит пути проектов, выбранные устройства и ссылки в `~/Library/Application Support/Fluttios/projects.json`; настройки интерфейса — в UserDefaults macOS. Логи сессий хранятся в памяти и могут содержать вывод вашего приложения. В Fluttios нет отправки телеметрии или аналитики. Flutter, Xcode, ваш проект и сервис notarization Apple могут выполнять собственные сетевые запросы.
+SimFlutDock хранит пути проектов, выбранные устройства и ссылки в `~/Library/Application Support/Fluttios/projects.json`; настройки интерфейса — в UserDefaults macOS. Логи сессий хранятся в памяти и могут содержать вывод вашего приложения. В SimFlutDock нет отправки телеметрии или аналитики. Flutter, Xcode, ваш проект и сервис notarization Apple могут выполнять собственные сетевые запросы.
 
 This developer utility is not sandboxed. It executes Flutter/Xcode tools and uses Accessibility for simulator window attachment. Undocumented window notification symbols have a public Accessibility fallback. Review any Flutter project before running it.
 

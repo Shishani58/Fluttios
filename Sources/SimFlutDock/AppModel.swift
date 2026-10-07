@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 import ServiceManagement
-import FluttiosCore
+import SimFlutDockCore
 import ImageIO
 import UniformTypeIdentifiers
 
@@ -15,7 +15,7 @@ import UniformTypeIdentifiers
         switch status {
         case .enabled: return L10n.text("Helper enabled")
         case .requiresApproval: return L10n.text("Allow the helper in System Settings → General → Login Items")
-        case .notFound: return L10n.text("Helper not found. Open the built Fluttios.app from /Applications.")
+        case .notFound: return L10n.text("Helper not found. Open the built SimFlutDock.app from /Applications.")
         default: return L10n.text("Automatic launch disabled")
         }
     }
@@ -324,7 +324,7 @@ import UniformTypeIdentifiers
                 case .resetPermissions:
                     guard manager.sessions[project.id]?.hasWork != true,
                           manager.conflictingProject(bundleID: bundle, deviceID: device.id, excluding: project.id) == nil else {
-                        throw FluttiosError.message(L10n.text("Press Stop for the app on this simulator before resetting permissions."))
+                        throw SimFlutDockError.message(L10n.text("Press Stop for the app on this simulator before resetting permissions."))
                     }
                     try await simulators.resetPermissions(bundleID: bundle, device: device)
                     simulatorToolResult = L10n.text("Permissions reset. The app will request access again when needed.")

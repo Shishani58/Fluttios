@@ -1,5 +1,5 @@
 import XCTest
-@testable import FluttiosCore
+@testable import SimFlutDockCore
 
 final class ProjectIconSourceTests: XCTestCase {
     private func withProject(_ body: (URL) throws -> Void) throws {

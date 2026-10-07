@@ -29,7 +29,7 @@ final class Helper: NSObject, NSApplicationDelegate {
         if ["com.apple.iphonesimulator", "com.apple.dt.Devices"].contains(where: { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty }) { simulatorRunning = true; showParent() }
     }
     private func showParent() {
-        // .../Fluttios.app/Contents/Library/LoginItems/FluttiosHelper.app
+        // .../SimFlutDock.app/Contents/Library/LoginItems/SimFlutDockHelper.app
         var url = Bundle.main.bundleURL
         for _ in 0..<4 { url.deleteLastPathComponent() }
         let config = NSWorkspace.OpenConfiguration(); config.activates = false; config.arguments = ["--background"]

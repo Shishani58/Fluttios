@@ -38,7 +38,7 @@ import Combine
                 try Task.checkCancellation()
                 if let conflict = self.conflictingProject(bundleID: bundleID, deviceID: device.id, excluding: project.id) {
                     let name = self.sessions[conflict]?.launchProject?.name ?? L10n.text("another project")
-                    throw FluttiosError.message(L10n.text("{0} is already using {1} on {2}. Select another device in the panel.", "\(name)", "\(bundleID)", "\(device.name)"))
+                    throw SimFlutDockError.message(L10n.text("{0} is already using {1} on {2}. Select another device in the panel.", "\(name)", "\(bundleID)", "\(device.name)"))
                 }
                 session.reserve(bundleID: bundleID)
                 session.setPreparationStage(device.isIOSSimulator ? L10n.text("Starting simulator") : L10n.text("Preparing device launch"))

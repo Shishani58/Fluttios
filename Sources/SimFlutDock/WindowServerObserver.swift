@@ -75,7 +75,7 @@ import Darwin
             if let frame = frame(for: id) {
                 if !verifiedGeometry, ProcessInfo.processInfo.arguments.contains("--verify-panel-follow") {
                     verifiedGeometry = true
-                    NSLog("Fluttios follow: direct WindowServer geometry received, window=%u", id)
+                    NSLog("SimFlutDock follow: direct WindowServer geometry received, window=%u", id)
                 }
                 onGeometry?(id, frame)
             }

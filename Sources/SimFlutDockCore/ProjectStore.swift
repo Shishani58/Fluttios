@@ -8,6 +8,7 @@ import Combine
     @Published public private(set) var persistenceError: String?
     private let file: URL
     public var selected: Project? { projects.first { $0.id == selectedID } }
+    // Keep the original storage path so renaming the product preserves saved projects.
     public init(file: URL? = nil) {
         self.file = file ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Fluttios/projects.json")
@@ -21,7 +22,7 @@ import Combine
     nonisolated public static func validate(_ url: URL) throws {
         let spec = url.appendingPathComponent("pubspec.yaml")
         guard let text = try? String(contentsOf: spec), text.range(of: #"(?m)^\s+sdk:\s*flutter\s*(?:#.*)?$"#, options: .regularExpression) != nil else {
-            throw FluttiosError.message(L10n.text("Select a Flutter project containing pubspec.yaml."))
+            throw SimFlutDockError.message(L10n.text("Select a Flutter project containing pubspec.yaml."))
         }
     }
     @discardableResult public func open(_ url: URL, replacing id: UUID? = nil) throws -> Project {
@@ -65,7 +66,7 @@ import Combine
             try FileManager.default.copyItem(at: file, to: copy); backup = copy
         }
         persistenceError = nil; persist()
-        if let persistenceError { throw FluttiosError.message(persistenceError) }
+        if let persistenceError { throw SimFlutDockError.message(persistenceError) }
         return backup
     }
     public func label(_ project: Project) -> String {

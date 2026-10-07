@@ -13,7 +13,7 @@ done
 python3 - "$version" <<'CHECK'
 import sys
 from pathlib import Path
-source = Path('Sources/Fluttios/Views.swift').read_text()
+source = Path('Sources/SimFlutDock/Views.swift').read_text()
 assert f'as? String ?? "{sys.argv[1]}"' in source, 'Update the version fallback in Views.swift'
 CHECK
 printf 'Version verified: %s\n' "$version"

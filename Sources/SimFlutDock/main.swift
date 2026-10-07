@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 import Darwin
-import FluttiosCore
+import SimFlutDockCore
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: AppModel!
@@ -25,14 +25,14 @@ import FluttiosCore
             let menuIcon = appIcon.copy() as! NSImage
             menuIcon.size = NSSize(width: 20, height: 20)
             menuIcon.isTemplate = false
-            menuIcon.accessibilityDescription = "Fluttios"
+            menuIcon.accessibilityDescription = "SimFlutDock"
             statusItem.button?.image = menuIcon
         } else {
-            statusItem.button?.image = NSImage(systemSymbolName: "iphone", accessibilityDescription: "Fluttios")
+            statusItem.button?.image = NSImage(systemSymbolName: "iphone", accessibilityDescription: "SimFlutDock")
         }
         statusItem.button?.target = self
         statusItem.button?.action = #selector(showPanel)
-        statusItem.button?.toolTip = L10n.text("Fluttios — show simulator or panel")
+        statusItem.button?.toolTip = L10n.text("SimFlutDock — show simulator or panel")
         model.languageDidChange = { [weak self] in self?.updateLocalizedTitles() }
         model.quitApp = { NSApp.terminate(nil) }
         activationToken = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
@@ -43,9 +43,9 @@ import FluttiosCore
         }
     }
     private func updateLocalizedTitles() {
-        statusItem.button?.toolTip = L10n.text("Fluttios — show simulator or panel")
-        settingsWindow?.title = L10n.text("Fluttios — Projects and Settings")
-        logsWindow?.title = L10n.text("Fluttios — Logs")
+        statusItem.button?.toolTip = L10n.text("SimFlutDock — show simulator or panel")
+        settingsWindow?.title = L10n.text("SimFlutDock — Projects and Settings")
+        logsWindow?.title = L10n.text("SimFlutDock — Logs")
     }
     @objc private func showPanel() {
         guard let button = statusItem.button else { return }
@@ -53,13 +53,13 @@ import FluttiosCore
     }
     @objc private func showSettings() {
         if settingsWindow == nil {
-            settingsWindow = window(title: L10n.text("Fluttios — Projects and Settings"), size: CGSize(width: 1040, height: 780), root: SettingsView(model: model))
+            settingsWindow = window(title: L10n.text("SimFlutDock — Projects and Settings"), size: CGSize(width: 1040, height: 780), root: SettingsView(model: model))
         }
         settingsWindow?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
         if let settingsWindow { coordinator.avoidCoveringSettings(settingsWindow) }
     }
     @objc private func showLogs() {
-        if logsWindow == nil { logsWindow = window(title: L10n.text("Fluttios — Logs"), size: CGSize(width: 860, height: 520), root: LogsView(model: model)) }
+        if logsWindow == nil { logsWindow = window(title: L10n.text("SimFlutDock — Logs"), size: CGSize(width: 860, height: 520), root: LogsView(model: model)) }
         logsWindow?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
     private func window<V: View>(title: String, size: CGSize, root: V) -> NSWindow {
@@ -77,7 +77,7 @@ import FluttiosCore
         guard model.manager.hasActiveSessions else { return .terminateNow }
         if exiting { return .terminateLater }
         let alert = NSAlert(); alert.messageText = L10n.text("Stop Flutter sessions and quit?")
-        alert.informativeText = L10n.text("Running projects will be stopped. Press Run again the next time you open Fluttios.")
+        alert.informativeText = L10n.text("Running projects will be stopped. Press Run again the next time you open SimFlutDock.")
         alert.addButton(withTitle: L10n.text("Stop All and Quit")); alert.addButton(withTitle: L10n.text("Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
         exiting = true

@@ -11,7 +11,7 @@ import Foundation
     public var onDisconnect: ((Error) -> Void)?
     public init() {
         rpc = MachineClient(arrayWrapped: false) { [weak self] data in
-            guard let self, let socket = self.socket, !self.closed else { throw FluttiosError.exited }
+            guard let self, let socket = self.socket, !self.closed else { throw SimFlutDockError.exited }
             Task { [weak self] in
                 do { try await socket.send(.string(String(decoding: data, as: UTF8.self))) }
                 catch { self?.failed(error) }
@@ -21,7 +21,7 @@ import Foundation
     public func connectAndResume(_ url: URL) async throws {
         // VM-service URLs come from the owned flutter process. Only local transports are needed.
         guard ["ws", "wss"].contains(url.scheme ?? ""), ["127.0.0.1", "localhost", "::1"].contains(url.host ?? "") else {
-            throw FluttiosError.message(L10n.text("Flutter returned an unsupported Dart VM address."))
+            throw SimFlutDockError.message(L10n.text("Flutter returned an unsupported Dart VM address."))
         }
         let socket = URLSession.shared.webSocketTask(with: url); self.socket = socket; socket.resume()
         receiver = Task { [weak self] in
@@ -43,7 +43,7 @@ import Foundation
         let vm = try await rpc.request("getVM", params: [:], timeout: 20)
         let result = vm["result"] as? [String: Any]
         guard let isolates = result?["isolates"] as? [[String: Any]], !isolates.isEmpty else {
-            throw FluttiosError.message(L10n.text("Dart VM did not return the main isolate."))
+            throw SimFlutDockError.message(L10n.text("Dart VM did not return the main isolate."))
         }
         for isolate in isolates {
             guard let id = isolate["id"] as? String, isolate["isSystemIsolate"] as? Bool != true else { continue }

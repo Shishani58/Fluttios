@@ -3,8 +3,6 @@ name: Publish macOS DMG
 on:
   push:
     tags: ['v*']
-    branches: [main]
-    paths: ['.github/workflows/release.yml']
   workflow_dispatch:
 
 permissions:
@@ -37,7 +35,7 @@ jobs:
           fi
           git rev-parse --verify "refs/tags/$tag"
           # Packaging may be added after the first source tag; app source must match.
-          git diff --exit-code "$tag" HEAD -- Sources Resources Package.swift Fluttios.xcodeproj scripts/build-app.sh scripts/check-version.sh
+          git diff --exit-code "$tag" HEAD -- Sources Resources Package.swift SimFlutDock.xcodeproj scripts/build-app.sh scripts/check-version.sh
           mkdir -p .build
           cp scripts/build-dmg.sh .build/build-dmg.sh
           cp .github/release-notes.md .build/release-notes.md
@@ -57,7 +55,7 @@ jobs:
       - name: Save build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Fluttios-${{ steps.version.outputs.version }}-DMG
+          name: SimFlutDock-${{ steps.version.outputs.version }}-DMG
           path: |
             dist/*.dmg
             dist/*.sha256
@@ -74,6 +72,6 @@ jobs:
             gh release upload "$RELEASE_TAG" dist/*.dmg dist/*.sha256 --clobber --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$RELEASE_TAG" dist/*.dmg dist/*.sha256 \
-              --verify-tag --title "Fluttios $RELEASE_VERSION" \
+              --verify-tag --title "SimFlutDock $RELEASE_VERSION" \
               --notes-file .build/release-notes.md --repo "$GITHUB_REPOSITORY"
           fi

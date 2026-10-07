@@ -1,5 +1,5 @@
 import XCTest
-@testable import FluttiosCore
+@testable import SimFlutDockCore
 
 final class DartMemoryTests: XCTestCase {
     func testHeapUsageDoesNotIncludeCapacityOrExternalMemory() {
@@ -474,7 +474,7 @@ final class ClientTests: XCTestCase {
         XCTAssertEqual((response["result"] as? [String: Any])?["type"] as? String, "VM")
     }
     @MainActor func testWriteFailure() async {
-        let client = MachineClient { _ in throw FluttiosError.exited }
+        let client = MachineClient { _ in throw SimFlutDockError.exited }
         do { _ = try await client.request("write", params: [:]); XCTFail() } catch {}
         XCTAssertEqual(client.pendingCount, 0)
     }
@@ -510,7 +510,7 @@ final class SessionTests: XCTestCase {
         XCTAssertNil(session.progressMessage)
         XCTAssertEqual(session.state, .ready)
         session.prepare(project: Project(name: "B", path: "/tmp"), device: SimulatorDevice(udid: "SIM", name: "iPhone", state: "Booted"))
-        session.launchFailed(FluttiosError.message("Build failed"))
+        session.launchFailed(SimFlutDockError.message("Build failed"))
         XCTAssertNil(session.progressMessage)
     }
     @MainActor func testProgressClearsOnStartupAndProcessExit() async throws {
@@ -550,7 +550,7 @@ final class SessionTests: XCTestCase {
     @MainActor private func wait(_ condition: () -> Bool) async throws {
         let deadline = Date().addingTimeInterval(10)
         while !condition() {
-            guard Date() < deadline else { throw FluttiosError.timeout("test") }
+            guard Date() < deadline else { throw SimFlutDockError.timeout("test") }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
     }
@@ -628,7 +628,7 @@ final class SessionTests: XCTestCase {
         session.prepare(project: project, device: device); session.stop()
         XCTAssertFalse(session.canRun)
         session.launchFailed(CancellationError()); XCTAssertTrue(session.canRun); XCTAssertEqual(session.state, .ready)
-        session.prepare(project: project, device: device); session.launchFailed(FluttiosError.message("failure"))
+        session.prepare(project: project, device: device); session.launchFailed(SimFlutDockError.message("failure"))
         XCTAssertEqual(session.state, .error); XCTAssertTrue(session.canRun)
         for n in 0..<2200 { session.append("log \(n)") }
         XCTAssertEqual(session.logs.count, 2000)
@@ -644,7 +644,7 @@ final class SessionTests: XCTestCase {
         let parent = "import subprocess; subprocess.Popen([\"/usr/bin/python3\",\"-c\", \"import base64; exec(base64.b64decode('" + encoded + "'))\"]).wait()"
         let begin = Date()
         do { _ = try await ToolRunner.run("/usr/bin/python3", ["-c", parent], timeout: 1); XCTFail("Expected timeout") }
-        catch { XCTAssertTrue(error is FluttiosError) }
+        catch { XCTAssertTrue(error is SimFlutDockError) }
         XCTAssertLessThan(Date().timeIntervalSince(begin), 3)
         let pid = Int32(try String(contentsOf: pidFile, encoding: .utf8))!
         defer { if kill(pid, 0) == 0 { kill(pid, SIGKILL) } }
