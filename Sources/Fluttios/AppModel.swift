@@ -53,6 +53,7 @@ import UniformTypeIdentifiers
         didSet { UserDefaults.standard.set(freePanel, forKey: "freePanel") }
     }
     @Published var attachmentStatus = ""
+    @Published var panelWindowBindings: [String: UUID] = [:]
     @Published var panelWidth: CGFloat = 420
     @Published var actualPanelSide: PanelSide?
     @Published var panelSide = PanelSide(rawValue: UserDefaults.standard.string(forKey: "panelSide") ?? "") ?? .above {
@@ -141,7 +142,14 @@ import UniformTypeIdentifiers
         if let device = selectedDevice { return !device.isIOSSimulator }
         return physicalTarget || (store.selected?.devicePlatform.map { $0 != "ios" } ?? false)
     }
-    var standalonePanel: Bool { freePanel || standaloneTarget }
+    var panelBindingKey: String { selectedDevice?.id ?? store.selected?.deviceID ?? "unselected" }
+    var manualPanelWindowID: UUID? {
+        guard tracker.trusted, let id = panelWindowBindings[panelBindingKey],
+              tracker.windows.contains(where: { $0.id == id }) else { return nil }
+        return id
+    }
+    // Manual attachment controls panel placement, independently of the Flutter target.
+    var standalonePanel: Bool { freePanel || (standaloneTarget && manualPanelWindowID == nil) }
     var launchMode: LaunchMode {
         if let session = selectedSession, session.hasWork { return session.launchProject?.launch.mode ?? .debug }
         return store.selected?.launch.mode ?? .debug

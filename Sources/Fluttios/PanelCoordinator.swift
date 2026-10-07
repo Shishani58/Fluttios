@@ -37,7 +37,6 @@ final class ControlPanel: NSPanel {
     private var dragging = false
     private var allowWithoutSimulator = false
     private var lastTargetID: String?
-    private var bindings: [String: UUID] = [:]
     private var automaticBinding = AutomaticPanelBinding()
     private weak var statusButton: NSStatusBarButton?
     private weak var settingsWindow: NSWindow?
@@ -80,7 +79,7 @@ final class ControlPanel: NSPanel {
         }
         model.bindWindow = { [weak self] id in
             guard let self else { return }
-            self.bindings[self.bindingKey] = id; self.model.freePanel = false; self.show()
+            self.model.panelWindowBindings[self.bindingKey] = id; self.model.freePanel = false; self.show()
         }
         model.resetPanel = { [weak self] in
             UserDefaults.standard.removeObject(forKey: "panelOffsetX"); UserDefaults.standard.removeObject(forKey: "panelOffsetY")
@@ -89,7 +88,7 @@ final class ControlPanel: NSPanel {
         }
         update()
     }
-    private var bindingKey: String { model.selectedDevice?.id ?? model.store.selected?.deviceID ?? "unselected" }
+    private var bindingKey: String { model.panelBindingKey }
     func avoidCoveringSettings(_ window: NSWindow) {
         settingsWindow = window
         update()
@@ -97,7 +96,7 @@ final class ControlPanel: NSPanel {
     private var boundWindow: SimulatorWindow? {
         guard !model.standalonePanel, model.tracker.trusted else { return nil }
         let tracker = model.tracker
-        let explicit = bindings[bindingKey].flatMap { id in tracker.windows.first { $0.id == id } }
+        let explicit = model.manualPanelWindowID.flatMap { id in tracker.windows.first { $0.id == id } }
         let automatic = automaticBinding.windowID.flatMap { id in tracker.windows.first { $0.id == id } }
         let matches = tracker.matching(model.selectedDevice, knownDevices: model.simulators.devices)
         if model.selectedDevice != nil || model.store.selected?.deviceID != nil {

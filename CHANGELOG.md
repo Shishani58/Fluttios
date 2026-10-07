@@ -1,5 +1,14 @@
 # Changelog / История изменений
 
+## [1.0.1] — 2026-10-07
+
+- Manual panel attachment now works independently of the selected Flutter device.
+  Ручная привязка панели работает независимо от выбранного устройства Flutter.
+- Centered the panel settings icon and updated panel position controls.
+  Исправлено положение иконки настроек и обновлены элементы управления положением панели.
+- Shortened both READMEs to installation, key features and quick start.
+  README на двух языках сокращены до установки, основных функций и быстрого старта.
+
 ## [1.0.0] — 2026-10-07
 
 First public release of Fluttios. / Первый публичный релиз Fluttios.
@@ -21,3 +30,5 @@ First public release of Fluttios. / Первый публичный релиз F
   Универсальный DMG, контрольная сумма SHA-256 и автоматическая упаковка релиза на GitHub.
 
 [1.0.0]: https://github.com/Shishani58/Fluttios/tree/v1.0.0
+
+[1.0.1]: https://github.com/Shishani58/Fluttios/tree/v1.0.1

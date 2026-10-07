@@ -774,24 +774,26 @@ struct PanelView: View {
                 }
                 Button { model.showSettings() } label: { Label(L10n.text("Settings…"), systemImage: "gearshape") }
                 Menu {
-                    Toggle(L10n.text("Free Position"), isOn: $model.freePanel).disabled(model.standaloneTarget)
+                    Toggle(L10n.text("Free Position"), isOn: $model.freePanel)
                     Button(L10n.text("Reset Position")) { model.resetPanel() }
                     Menu(L10n.text("Attach to Simulator Window")) {
                         if model.tracker.windows.isEmpty { Text(model.tracker.trusted ? L10n.text("No open Simulator windows") : L10n.text("Allow access in Fluttios settings")) }
                         ForEach(model.tracker.windows) { window in
                             Button("\(window.title) (\(Int(window.frame.minX)), \(Int(window.frame.minY)))") { model.bindWindow(window.id) }
                         }
-                    }.disabled(model.standaloneTarget)
+                    }
                     Divider()
                     Button(L10n.text("Refresh Attachment")) { model.tracker.refresh() }
                 } label: { Label(L10n.text("Panel Position"), systemImage: "rectangle.3.group") }
                 Divider()
                 Button { model.quitApp() } label: { Label(L10n.text("Quit Fluttios"), systemImage: "power") }
             } label: {
-                PanelSettingsIcon(hasError: hasError)
+                Color.clear.frame(width: 18, height: 18)
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden)
             .frame(width: PanelMetrics.controlSize, height: PanelMetrics.controlHeight)
+            // AppKit reserves menu-label insets even with its indicator hidden.
+            .overlay { PanelSettingsIcon(hasError: hasError).allowsHitTesting(false) }
             .modifier(PanelControlSurface(bordered: true))
             .accessibilityLabel(L10n.text("Panel settings and menu")).help(model.selectedSession?.progressMessage ?? model.selectedSession?.state.title ?? L10n.text("Panel settings and menu"))
             .popover(isPresented: $showingError, arrowEdge: .bottom) {
@@ -1084,7 +1086,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 28) {
             SettingsSection(L10n.text("Panel Placement")) {
                 Toggle(L10n.text("Free Position"), isOn: $model.freePanel)
-                    .toggleStyle(.switch).disabled(model.standaloneTarget).padding(18)
+                    .toggleStyle(.switch).padding(18)
                 Divider()
                 SettingsField(L10n.text("Simulator Side")) {
                     Picker(L10n.text("Side of the Simulator window"), selection: $model.panelSide) {
@@ -1092,7 +1094,7 @@ struct SettingsView: View {
                     }.labelsHidden().pickerStyle(.segmented).disabled(model.standalonePanel)
                 }
                 Divider()
-                SettingsNote(model.standaloneTarget ? L10n.text("For this device, the panel works independently of Simulator.") : (model.freePanel ? L10n.text("Turn off Free Position to choose an attachment side.") : L10n.text("If there is not enough room on the selected side, the panel appears on the opposite side.")))
+                SettingsNote(model.freePanel ? L10n.text("Turn off Free Position to choose an attachment side.") : (model.standalonePanel ? L10n.text("For this device, the panel works independently of Simulator.") : L10n.text("If there is not enough room on the selected side, the panel appears on the opposite side.")))
             }
             SettingsSection(L10n.text("Simulator Window Access")) {
                 SettingsField(L10n.text("Accessibility")) {
@@ -1122,14 +1124,14 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 28) {
             SettingsSection("Fluttios") {
                 SettingsField(L10n.text("Version")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0")
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.1")
                         .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .textSelection(.enabled)
                 }
                 Divider()
                 SettingsField(L10n.text("Build")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1")
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "2")
                         .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
