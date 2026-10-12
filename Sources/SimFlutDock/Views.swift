@@ -31,6 +31,7 @@ private extension SimulatorDevice {
 struct ProjectMenu: View {
     @ObservedObject var model: AppModel
     var compact = false
+    @Environment(\.panelControlWidth) private var controlWidth
     @State private var showingPicker = false
 
     var body: some View {
@@ -48,7 +49,7 @@ struct ProjectMenu: View {
                         .foregroundStyle(.secondary).accessibilityHidden(true)
                 }
             }.frame(maxWidth: compact ? nil : 180, alignment: .leading)
-                .frame(width: compact ? PanelMetrics.controlSize : nil, height: compact ? PanelMetrics.controlHeight : nil)
+                .frame(width: compact ? controlWidth : nil, height: compact ? PanelMetrics.controlHeight : nil)
                 .modifier(PanelControlSurface(active: compact, pressed: showingPicker, bordered: compact))
         }
         .buttonStyle(.plain)
@@ -285,6 +286,17 @@ private enum PanelMetrics {
     static let iconSize: CGFloat = 14
 }
 
+private struct PanelControlWidthKey: EnvironmentKey {
+    static let defaultValue = PanelMetrics.controlSize
+}
+
+private extension EnvironmentValues {
+    var panelControlWidth: CGFloat {
+        get { self[PanelControlWidthKey.self] }
+        set { self[PanelControlWidthKey.self] = newValue }
+    }
+}
+
 private struct PanelIcon: View {
     let symbol: String
     var body: some View {
@@ -355,10 +367,11 @@ struct PanelButtonStyle: ButtonStyle {
     private struct PanelButtonContent: View {
         let configuration: ButtonStyle.Configuration
         @Environment(\.isEnabled) private var enabled
+        @Environment(\.panelControlWidth) private var controlWidth
         var body: some View {
             configuration.label
                 .font(.system(size: PanelMetrics.iconSize, weight: .medium))
-                .frame(width: PanelMetrics.controlSize, height: PanelMetrics.controlHeight)
+                .frame(width: controlWidth, height: PanelMetrics.controlHeight)
                 .modifier(PanelControlSurface(pressed: configuration.isPressed, bordered: true))
                 .opacity(enabled ? 1 : 0.35)
         }
@@ -368,6 +381,7 @@ struct PanelButtonStyle: ButtonStyle {
 struct DeviceMenu: View {
     @ObservedObject var model: AppModel
     var compact = false
+    @Environment(\.panelControlWidth) private var controlWidth
     @State private var showingPicker = false
 
     var body: some View {
@@ -386,7 +400,7 @@ struct DeviceMenu: View {
                         .foregroundStyle(.secondary).accessibilityHidden(true)
                 }
             }.frame(maxWidth: compact ? nil : 300, alignment: .leading)
-                .frame(width: compact ? PanelMetrics.controlSize : nil, height: compact ? PanelMetrics.controlHeight : nil)
+                .frame(width: compact ? controlWidth : nil, height: compact ? PanelMetrics.controlHeight : nil)
                 .modifier(PanelControlSurface(active: compact, pressed: showingPicker, bordered: compact))
         }
         .buttonStyle(.plain)
@@ -651,7 +665,6 @@ private struct DeviceChoiceRow: View {
 struct SessionButtons: View {
     @ObservedObject var model: AppModel
     var compact = false
-    var essentialsOnly = false
     var body: some View {
         Group {
             if compact {
@@ -675,14 +688,12 @@ struct SessionButtons: View {
             Button { model.run() } label: { Label { Text("Run") } icon: { sessionIcon("play", regular: "play.fill") }.foregroundStyle(.green) }
                 .disabled(model.selectedSession.map { !$0.canRun } ?? false)
                 .help(L10n.text("Run — start a new {0} session on the selected device", "\(model.launchMode.title)"))
-            if !essentialsOnly {
             Button { model.restart(full: false) } label: { Label { Text("Hot Reload") } icon: { sessionIcon("bolt", regular: "bolt.fill") }.foregroundStyle(.orange) }
                 .disabled(!(model.selectedSession?.canRestart ?? false))
                 .help(L10n.text("Hot Reload — preserve Dart state"))
             Button { model.restart(full: true) } label: { Label { Text("Hot Restart") } icon: { sessionIcon("arrow.clockwise", regular: "arrow.clockwise") }.foregroundStyle(.green) }
                 .disabled(!(model.selectedSession?.canRestart ?? false))
                 .help(L10n.text("Hot Restart — reset Dart state. After native code changes, use Stop and Run."))
-            }
             Button { model.selectedSession?.stop() } label: { Label { Text("Stop") } icon: { sessionIcon("stop", regular: "stop.fill") }.foregroundStyle(.red) }
                 .disabled(!(model.selectedSession?.canStop ?? false))
                 .help(L10n.text("Stop — stop only the selected session"))
@@ -716,9 +727,13 @@ struct PanelView: View {
         colorScheme == .dark ? Color(red: 32 / 255, green: 38 / 255, blue: 36 / 255) : Color(nsColor: .windowBackgroundColor)
     }
     private var panelLayout: AnyLayout {
-        model.verticalPanel ? AnyLayout(VStackLayout(spacing: PanelMetrics.groupSpacing)) : AnyLayout(HStackLayout(spacing: PanelMetrics.groupSpacing))
+        model.verticalPanel ? AnyLayout(VStackLayout(spacing: PanelMetrics.groupSpacing)) : AnyLayout(HStackLayout(spacing: narrowPanel ? 4 : PanelMetrics.groupSpacing))
     }
-    private var compactActions: Bool { !model.verticalPanel && model.panelWidth < 380 }
+    private var narrowPanel: Bool { !model.verticalPanel && model.panelWidth < 380 }
+    private var controlWidth: CGFloat {
+        // Eight controls, five group gaps, two drag separators and outer insets.
+        narrowPanel ? min(PanelMetrics.controlSize, max(24, (model.panelWidth - 60) / 8)) : PanelMetrics.controlSize
+    }
     private var blockSeparator: some View {
         Group {
         if model.verticalPanel {
@@ -750,7 +765,7 @@ struct PanelView: View {
             }
             blockSeparator
             panelLayout {
-                SessionButtons(model: model, compact: true, essentialsOnly: compactActions)
+                SessionButtons(model: model, compact: true)
             }
             blockSeparator
             panelLayout {
@@ -761,13 +776,6 @@ struct PanelView: View {
             .accessibilityLabel(L10n.text("Show logs for the selected project"))
             .help(L10n.text("Show logs for the selected project"))
             Menu {
-                if compactActions {
-                    Button { model.restart(full: false) } label: { Label("Hot Reload", systemImage: "bolt") }
-                        .disabled(!(model.selectedSession?.canRestart ?? false))
-                    Button { model.restart(full: true) } label: { Label("Hot Restart", systemImage: "arrow.clockwise") }
-                        .disabled(!(model.selectedSession?.canRestart ?? false))
-                    Divider()
-                }
                 if hasError {
                     Button { showingError = true } label: { Label(L10n.text("Show Error…"), systemImage: "exclamationmark.triangle") }
                     Divider()
@@ -791,7 +799,7 @@ struct PanelView: View {
                 Color.clear.frame(width: 18, height: 18)
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden)
-            .frame(width: PanelMetrics.controlSize, height: PanelMetrics.controlHeight)
+            .frame(width: controlWidth, height: PanelMetrics.controlHeight)
             // AppKit reserves menu-label insets even with its indicator hidden.
             .overlay { PanelSettingsIcon(hasError: hasError).allowsHitTesting(false) }
             .modifier(PanelControlSurface(bordered: true))
@@ -807,6 +815,7 @@ struct PanelView: View {
             }
             }
         }
+        .environment(\.panelControlWidth, controlWidth)
         .padding(model.verticalPanel ? .vertical : .horizontal, PanelMetrics.inset)
         .frame(width: model.panelWidth, height: model.verticalPanel ? 374 : PanelMetrics.rowHeight)
         if busy && !model.verticalPanel {
@@ -1124,7 +1133,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 28) {
             SettingsSection("SimFlutDock") {
                 SettingsField(L10n.text("Version")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.2")
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.3")
                         .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .textSelection(.enabled)

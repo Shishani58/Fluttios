@@ -1,5 +1,10 @@
 # Changelog / История изменений
 
+## [1.0.3] — 2026-10-12
+
+- Keep Hot Reload and Hot Restart visible on narrow panels by reducing button widths and spacing.
+  Hot Reload и Hot Restart остаются на узкой панели: уменьшаются ширина кнопок и интервалы вместо скрытия действий в меню.
+
 ## [1.0.2] — 2026-10-07
 
 - Renamed Fluttios to **SimFlutDock** across the app, build targets, Xcode project and release downloads.
@@ -41,3 +46,5 @@ First public release of Fluttios. / Первый публичный релиз F
 [1.0.1]: https://github.com/Shishani58/Fluttios/tree/v1.0.1
 
 [1.0.2]: https://github.com/Shishani58/Fluttios/tree/v1.0.2
+
+[1.0.3]: https://github.com/Shishani58/Fluttios/tree/v1.0.3
