@@ -40,6 +40,8 @@ import SimFlutDockCore
         }
         if ProcessInfo.processInfo.arguments.contains("--verify-panel-follow") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.coordinator.show() }
+        } else {
+            model.updater.checkAutomatically()
         }
     }
     private func updateLocalizedTitles() {

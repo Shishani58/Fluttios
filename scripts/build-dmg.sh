@@ -44,4 +44,19 @@ hdiutil verify "$staging/SimFlutDock.dmg"
 mkdir -p "$(dirname "$output")"
 mv -f "$staging/SimFlutDock.dmg" "$output"
 (cd "$(dirname "$output")" && shasum -a 256 "$(basename "$output")" > "$(basename "$output").sha256")
+# Public release metadata avoids unauthenticated GitHub API rate limits in the app.
+python3 - "$version" "$output" <<'PY'
+import json
+import pathlib
+import sys
+
+version, output = sys.argv[1:]
+dmg = pathlib.Path(output)
+assets = []
+for path in (dmg, pathlib.Path(output + ".sha256")):
+    assets.append({"name": path.name, "state": "uploaded", "size": path.stat().st_size,
+                   "browser_download_url": f"https://github.com/Shishani58/Fluttios/releases/download/v{version}/{path.name}"})
+manifest = {"tag_name": f"v{version}", "draft": False, "prerelease": False, "body": None, "assets": assets}
+dmg.with_name("app-update.json").write_text(json.dumps(manifest, indent=2) + "\n")
+PY
 printf "Built DMG: %s\n" "$output"

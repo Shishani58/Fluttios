@@ -10,11 +10,19 @@ A native macOS utility to run Flutter projects, use Hot Reload and read logs wit
 
 ## Install
 
-[**Download SimFlutDock 1.0.3 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.3/SimFlutDock-1.0.3.dmg)
+[**Download SimFlutDock 1.0.4 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.4/SimFlutDock-1.0.4.dmg)
 
 Requires **macOS 14+**, **Flutter SDK** and full **Xcode**. Supports Apple Silicon and Intel. Open the DMG and drag the app to **Applications**.
 
 The build is not notarized by Apple. If macOS blocks the first launch, follow [Apple’s guidance](https://support.apple.com/en-us/102445).
+
+### Updates
+
+The app checks stable GitHub Releases at launch, at most once a day. Check manually using **⚙ → Check for Updates…** or **Settings → General → App Updates**. Automatic checks can be disabled.
+
+When a new version is available, choose **Download Update**. The app saves the DMG in a separate folder in Downloads, verifies its size and SHA-256, and opens the installer. Quit SimFlutDock, drag the new app to Applications, confirm replacement, and launch it again. Quitting asks for confirmation before stopping active Flutter sessions. Downloads can be cancelled; failed checks can be retried.
+
+To ship an update, publish a stable `vX.Y.Z` release containing `SimFlutDock-X.Y.Z.dmg`, `SimFlutDock-X.Y.Z.dmg.sha256`, and `app-update.json`. The existing `scripts/build-dmg.sh` and release workflow create and publish all three files. The version must be higher than the installed version; prereleases are not offered.
 
 ## Features
 

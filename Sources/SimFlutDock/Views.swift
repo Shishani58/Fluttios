@@ -308,32 +308,6 @@ private struct PanelIcon: View {
     }
 }
 
-private struct PanelSettingsIcon: View {
-    let hasError: Bool
-    private static let settings = coloredSymbol("gearshape", color: NSColor(red: 0.42, green: 0.70, blue: 0.95, alpha: 1))
-    private static let error = coloredSymbol("exclamationmark.triangle", color: .systemOrange)
-
-    var body: some View {
-        Image(nsImage: hasError ? Self.error : Self.settings)
-            .renderingMode(.original)
-            .frame(width: 18, height: 18)
-            .accessibilityHidden(true)
-    }
-
-    // Native macOS menus otherwise turn SF Symbols into monochrome template images.
-    private static func coloredSymbol(_ name: String, color: NSColor) -> NSImage {
-        let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)!
-            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: PanelMetrics.iconSize, weight: .medium))!
-        let size = symbol.size
-        return NSImage(size: size, flipped: false) { rect in
-            symbol.draw(in: rect)
-            color.setFill()
-            rect.fill(using: .sourceAtop)
-            return true
-        }
-    }
-}
-
 private struct PanelControlSurface: ViewModifier {
     var active = true
     var pressed = false
@@ -775,33 +749,42 @@ struct PanelView: View {
             .buttonStyle(PanelButtonStyle())
             .accessibilityLabel(L10n.text("Show logs for the selected project"))
             .help(L10n.text("Show logs for the selected project"))
-            Menu {
-                if hasError {
-                    Button { showingError = true } label: { Label(L10n.text("Show Error…"), systemImage: "exclamationmark.triangle") }
-                    Divider()
-                }
-                Button { model.showSettings() } label: { Label(L10n.text("Settings…"), systemImage: "gearshape") }
-                Menu {
-                    Toggle(L10n.text("Free Position"), isOn: $model.freePanel)
-                    Button(L10n.text("Reset Position")) { model.resetPanel() }
-                    Menu(L10n.text("Attach to Simulator Window")) {
-                        if model.tracker.windows.isEmpty { Text(model.tracker.trusted ? L10n.text("No open Simulator windows") : L10n.text("Allow access in SimFlutDock settings")) }
-                        ForEach(model.tracker.windows) { window in
-                            Button("\(window.title) (\(Int(window.frame.minX)), \(Int(window.frame.minY)))") { model.bindWindow(window.id) }
+            Color.clear
+                .frame(width: controlWidth, height: PanelMetrics.controlHeight)
+                .overlay {
+                    Menu {
+                        if hasError {
+                            Button { showingError = true } label: { Label(L10n.text("Show Error…"), systemImage: "exclamationmark.triangle") }
+                            Divider()
                         }
+                        Button { model.showSettings() } label: { Label(L10n.text("Settings…"), systemImage: "gearshape") }
+                        Button(L10n.text("Check for Updates…")) { model.updater.check() }
+                        Menu {
+                            Toggle(L10n.text("Free Position"), isOn: $model.freePanel)
+                            Button(L10n.text("Reset Position")) { model.resetPanel() }
+                            Menu(L10n.text("Attach to Simulator Window")) {
+                                if model.tracker.windows.isEmpty { Text(model.tracker.trusted ? L10n.text("No open Simulator windows") : L10n.text("Allow access in SimFlutDock settings")) }
+                                ForEach(model.tracker.windows) { window in
+                                    Button("\(window.title) (\(Int(window.frame.minX)), \(Int(window.frame.minY)))") { model.bindWindow(window.id) }
+                                }
+                            }
+                            Divider()
+                            Button(L10n.text("Refresh Attachment")) { model.tracker.refresh() }
+                        } label: { Label(L10n.text("Panel Position"), systemImage: "rectangle.3.group") }
+                        Divider()
+                        Button { model.quitApp() } label: { Label(L10n.text("Quit SimFlutDock"), systemImage: "power") }
+                    } label: {
+                        Color.clear.frame(width: 18, height: 18)
                     }
-                    Divider()
-                    Button(L10n.text("Refresh Attachment")) { model.tracker.refresh() }
-                } label: { Label(L10n.text("Panel Position"), systemImage: "rectangle.3.group") }
-                Divider()
-                Button { model.quitApp() } label: { Label(L10n.text("Quit SimFlutDock"), systemImage: "power") }
-            } label: {
-                Color.clear.frame(width: 18, height: 18)
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            // Keep the icon outside the native menu's label and layout insets.
+            .overlay(alignment: .center) {
+                PanelIcon(symbol: "gearshape")
+                    .foregroundStyle(Color(red: 0.42, green: 0.70, blue: 0.95))
+                    .allowsHitTesting(false)
             }
-            .menuStyle(.borderlessButton).menuIndicator(.hidden)
-            .frame(width: controlWidth, height: PanelMetrics.controlHeight)
-            // AppKit reserves menu-label insets even with its indicator hidden.
-            .overlay { PanelSettingsIcon(hasError: hasError).allowsHitTesting(false) }
             .modifier(PanelControlSurface(bordered: true))
             .accessibilityLabel(L10n.text("Panel settings and menu")).help(model.selectedSession?.progressMessage ?? model.selectedSession?.state.title ?? L10n.text("Panel settings and menu"))
             .popover(isPresented: $showingError, arrowEdge: .bottom) {
@@ -1133,17 +1116,20 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 28) {
             SettingsSection("SimFlutDock") {
                 SettingsField(L10n.text("Version")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.3")
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.4")
                         .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .textSelection(.enabled)
                 }
                 Divider()
                 SettingsField(L10n.text("Build")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "3")
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "5")
                         .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
+            }
+            SettingsSection(L10n.text("App Updates")) {
+                AppUpdateSettings(updater: model.updater)
             }
             SettingsSection(L10n.text("Language")) {
                 SettingsField(L10n.text("Language")) {

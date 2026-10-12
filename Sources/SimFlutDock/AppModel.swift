@@ -45,6 +45,7 @@ import UniformTypeIdentifiers
     let simulators = SimulatorService()
     let tracker = SimulatorWindowTracker()
     let background = BackgroundLaunch()
+    let updater = AppUpdater()
     let manager: SessionManager
     @Published var globalSDK: String = UserDefaults.standard.string(forKey: "globalSDK") ?? "" {
         didSet { UserDefaults.standard.set(globalSDK, forKey: "globalSDK") }
