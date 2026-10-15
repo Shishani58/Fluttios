@@ -10,7 +10,7 @@ A native macOS utility to run Flutter projects, use Hot Reload and read logs wit
 
 ## Install
 
-[**Download SimFlutDock 1.0.4 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.4/SimFlutDock-1.0.4.dmg)
+[**Download SimFlutDock 1.0.5 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.5/SimFlutDock-1.0.5.dmg)
 
 Requires **macOS 14+**, **Flutter SDK** and full **Xcode**. Supports Apple Silicon and Intel. Open the DMG and drag the app to **Applications**.
 

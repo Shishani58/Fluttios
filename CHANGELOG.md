@@ -1,5 +1,19 @@
 # Changelog / История изменений
 
+## [1.0.5] — 2026-10-16
+
+- Redesigned settings and device picker, with grouped controls and a panel placement preview.
+  Обновлены настройки и выбор устройств: сгруппированные элементы управления и предпросмотр расположения панели.
+- Device discovery refreshes when the picker opens and waits for an ongoing scan.
+  Список устройств обновляется при открытии выбора и дожидается текущего поиска.
+- Added optional hide/show for the unbound panel from the menu bar; right-click or Control-click opens settings.
+  Добавлено скрытие и показ непривязанной панели из строки меню; правое нажатие или Control-click открывает настройки.
+
+## [1.0.4] — 2026-10-12
+
+- Added automatic and manual update checks with DMG size and SHA-256 verification.
+  Добавлены автоматическая и ручная проверка обновлений с проверкой размера DMG и SHA-256.
+
 ## [1.0.3] — 2026-10-12
 
 - Keep Hot Reload and Hot Restart visible on narrow panels by reducing button widths and spacing.
@@ -48,3 +62,7 @@ First public release of Fluttios. / Первый публичный релиз F
 [1.0.2]: https://github.com/Shishani58/Fluttios/tree/v1.0.2
 
 [1.0.3]: https://github.com/Shishani58/Fluttios/tree/v1.0.3
+
+[1.0.4]: https://github.com/Shishani58/Fluttios/tree/v1.0.4
+
+[1.0.5]: https://github.com/Shishani58/Fluttios/tree/v1.0.5

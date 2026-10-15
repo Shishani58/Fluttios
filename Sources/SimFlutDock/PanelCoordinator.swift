@@ -109,6 +109,11 @@ final class ControlPanel: NSPanel {
         if boundWindow != nil {
             show()
         } else {
+            if model.toggleUnboundPanelFromTray, panel.isVisible {
+                suppressed = true
+                panel.orderOut(nil)
+                return
+            }
             statusButton = button
             attachedWindow = nil
             suppressed = false

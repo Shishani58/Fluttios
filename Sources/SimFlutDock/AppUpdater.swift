@@ -156,12 +156,15 @@ struct AppUpdateView: View {
 struct AppUpdateSettings: View {
     @ObservedObject var updater: AppUpdater
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(L10n.text("Automatically check for updates"), isOn: $updater.automaticallyChecks)
-                .toggleStyle(.switch)
-            Text(L10n.text("Checks at launch, at most once a day. Downloads only with your permission."))
-                .font(.callout).foregroundStyle(.secondary)
-            Button(L10n.text("Check for Updates…")) { updater.check() }
-        }.padding(18)
+        VStack(alignment: .leading, spacing: 0) {
+            SettingsToggle(title: L10n.text("Automatically check for updates"),
+                           subtitle: L10n.text("Checks at launch, at most once a day. Downloads only with your permission."),
+                           isOn: $updater.automaticallyChecks)
+            Divider()
+            SettingsField(L10n.text("Check for a newer version of SimFlutDock.")) {
+                Button(L10n.text("Check for Updates…")) { updater.check() }
+                    .disabled(updater.busy).controlSize(.small)
+            }
+        }
     }
 }

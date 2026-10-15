@@ -53,6 +53,9 @@ import UniformTypeIdentifiers
     @Published var freePanel = UserDefaults.standard.bool(forKey: "attachedPanelBehaviorV2") ? UserDefaults.standard.bool(forKey: "freePanel") : false {
         didSet { UserDefaults.standard.set(freePanel, forKey: "freePanel") }
     }
+    @Published var toggleUnboundPanelFromTray = UserDefaults.standard.bool(forKey: "toggleUnboundPanelFromTray") {
+        didSet { UserDefaults.standard.set(toggleUnboundPanelFromTray, forKey: "toggleUnboundPanelFromTray") }
+    }
     @Published var attachmentStatus = ""
     @Published var panelWindowBindings: [String: UUID] = [:]
     @Published var panelWidth: CGFloat = 420
@@ -155,7 +158,16 @@ import UniformTypeIdentifiers
         if let session = selectedSession, session.hasWork { return session.launchProject?.launch.mode ?? .debug }
         return store.selected?.launch.mode ?? .debug
     }
-    func refreshDevices() async { await simulators.refresh(project: store.selected, globalSDK: globalSDK) }
+    func refreshDevices() async {
+        // Opening the picker or changing projects can overlap the startup scan.
+        // Wait so the new request isn't discarded by SimulatorService's busy guard.
+        while simulators.refreshing {
+            do { try await Task.sleep(for: .milliseconds(100)) }
+            catch { return }
+        }
+        guard !Task.isCancelled else { return }
+        await simulators.refresh(project: store.selected, globalSDK: globalSDK)
+    }
     func toggleSimulatorPin(_ device: SimulatorDevice) {
         guard device.isIOSSimulator else { return }
         if !pinnedSimulatorIDs.insert(device.id).inserted { pinnedSimulatorIDs.remove(device.id) }

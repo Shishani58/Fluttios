@@ -31,7 +31,8 @@ import SimFlutDockCore
             statusItem.button?.image = NSImage(systemSymbolName: "iphone", accessibilityDescription: "SimFlutDock")
         }
         statusItem.button?.target = self
-        statusItem.button?.action = #selector(showPanel)
+        statusItem.button?.action = #selector(statusItemClicked)
+        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         statusItem.button?.toolTip = L10n.text("SimFlutDock — show simulator or panel")
         model.languageDidChange = { [weak self] in self?.updateLocalizedTitles() }
         model.quitApp = { NSApp.terminate(nil) }
@@ -49,7 +50,12 @@ import SimFlutDockCore
         settingsWindow?.title = L10n.text("SimFlutDock — Projects and Settings")
         logsWindow?.title = L10n.text("SimFlutDock — Logs")
     }
-    @objc private func showPanel() {
+    @objc private func statusItemClicked() {
+        if let event = NSApp.currentEvent,
+           event.type == .rightMouseUp || (event.type == .leftMouseUp && event.modifierFlags.contains(.control)) {
+            showSettings()
+            return
+        }
         guard let button = statusItem.button else { return }
         coordinator.show(from: button)
     }

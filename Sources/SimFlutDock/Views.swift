@@ -391,12 +391,13 @@ private struct DevicePicker: View {
     @ObservedObject var model: AppModel
     let close: () -> Void
     @State private var search = ""
+    @FocusState private var searchFocused: Bool
 
     private var canEdit: Bool { model.store.selected != nil && model.selectedSession?.hasWork != true }
     private var devices: [SimulatorDevice] {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
         return model.simulators.devices.filter {
-            query.isEmpty || "\($0.name) \($0.runtime ?? "")".localizedCaseInsensitiveContains(query)
+            query.isEmpty || "\($0.name) \(runtimeTitle($0))".localizedCaseInsensitiveContains(query)
         }.sorted {
             if ($0.state == "Booted") != ($1.state == "Booted") { return $0.state == "Booted" }
             return $0.name.localizedStandardCompare($1.name) == .orderedAscending
@@ -404,69 +405,49 @@ private struct DevicePicker: View {
     }
 
     var body: some View {
+        let visibleDevices = devices
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(L10n.text("Device and Launch")).font(.system(size: 16, weight: .semibold))
-                Spacer()
-                Button(action: close) { Image(systemName: "xmark") }
-                    .buttonStyle(.plain).foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .keyboardShortcut(.cancelAction).help(L10n.text("Close"))
-                    .accessibilityLabel(L10n.text("Close device picker"))
-            }.padding(.bottom, 16)
-
-            Text(L10n.text("Launch Mode")).font(.system(size: 12, weight: .semibold)).padding(.bottom, 8)
             HStack(spacing: 8) {
-                ForEach(LaunchMode.allCases, id: \.self) { mode in
-                    Button { model.chooseLaunchMode(mode) } label: {
-                        Label(mode.title, systemImage: mode.symbol)
-                            .font(.system(size: 12, weight: .medium))
-                            .frame(maxWidth: .infinity).padding(.vertical, 8)
-                            .foregroundStyle(model.launchMode == mode ? Color.accentColor : Color.primary)
-                            .background(model.launchMode == mode ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 7))
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+                    TextField(L10n.text("Search devices or OS versions"), text: $search).textFieldStyle(.plain)
+                        .focused($searchFocused)
+                    if !search.isEmpty {
+                        Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
+                            .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(L10n.text("Clear search"))
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!canEdit || !mode.supports(model.selectedDevice))
-                    .accessibilityValue(model.launchMode == mode ? L10n.text("Selected") : L10n.text("Not selected"))
                 }
-            }
-            Text(model.selectedDevice == nil || model.selectedDevice?.isEmulator == true
-                 ? L10n.text("Only Debug is available on simulators.")
-                 : L10n.text("Debug — debugging · Profile — performance · Release — production"))
-                .font(.system(size: 11)).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true).padding(.top, 8)
-
-            Divider().padding(.vertical, 16)
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
-                TextField(L10n.text("Search devices or OS versions"), text: $search).textFieldStyle(.plain)
-                if !search.isEmpty {
-                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(L10n.text("Clear search"))
+                .padding(.horizontal, 10).padding(.vertical, 8)
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.08)))
+                Button(action: close) {
+                    Image(systemName: "xmark").font(.system(size: 11, weight: .medium))
+                        .frame(width: 24, height: 28).contentShape(Rectangle())
                 }
-            }
-            .padding(10).background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 7))
-            .padding(.bottom, 8)
+                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .keyboardShortcut(.cancelAction).help(L10n.text("Close"))
+                .accessibilityLabel(L10n.text("Close device picker"))
+            }.padding(12)
 
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 4) {
+                LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(0..<3, id: \.self) { section in
-                        let group = devices.filter { device in
+                        let group = visibleDevices.filter { device in
                             let pinned = model.pinnedSimulatorIDs.contains(device.id)
                             switch section {
                             case 0: return device.isIOSSimulator && pinned
-                            case 1: return device.isIOSSimulator && !pinned
-                            default: return !device.isIOSSimulator
+                            case 1: return !device.isIOSSimulator
+                            default: return device.isIOSSimulator && !pinned
                             }
                         }
                         if !group.isEmpty {
                             HStack {
-                                Text(section == 0 ? L10n.text("Pinned") : (section == 1 ? L10n.text("iOS Simulators") : L10n.text("Other Devices")))
+                                Text(section == 0 ? L10n.text("Pinned") : (section == 1 ? L10n.text("Other Devices") : L10n.text("iOS Simulators")))
                                 Spacer()
                                 Text("\(group.count)").monospacedDigit()
                             }
                             .font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-                            .padding(.horizontal, 10).padding(.top, 12).padding(.bottom, 4)
+                            .padding(.leading, 42).padding(.trailing, 12).padding(.top, 10).padding(.bottom, 4)
                             ForEach(group) { device in
                                 DeviceChoiceRow(symbol: device.symbol, title: device.name, detail: runtimeTitle(device),
                                                 selected: model.store.selected?.deviceID == device.id,
@@ -482,7 +463,7 @@ private struct DevicePicker: View {
                             }
                         }
                     }
-                    if devices.isEmpty {
+                    if visibleDevices.isEmpty {
                         VStack(spacing: 6) {
                             Text(model.simulators.refreshing ? L10n.text("Searching for devices…") : (search.isEmpty ? L10n.text("No devices found") : L10n.text("No matches"))).fontWeight(.medium)
                             Text(model.simulators.refreshing ? L10n.text("Getting the list from Xcode and Flutter.") : (search.isEmpty ? L10n.text("Refresh the list and check the connection.") : L10n.text("Try another name or OS version.")))
@@ -490,47 +471,61 @@ private struct DevicePicker: View {
                         }.frame(maxWidth: .infinity).padding(.vertical, 32)
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.horizontal, 8).padding(.bottom, 8)
             }
-            .frame(height: 340)
+            .frame(height: 420)
 
-            Divider().padding(.vertical, 12)
-            if let error = model.simulatorBootError {
-                notice(error, symbol: "exclamationmark.triangle")
-            }
-            if !model.simulators.refreshing, let id = model.store.selected?.deviceID, !model.simulators.devices.contains(where: { $0.id == id }) {
-                notice(L10n.text("The saved device is unavailable. Select another one."), symbol: "exclamationmark.triangle")
-            }
-            if model.selectedSession?.hasWork == true {
-                notice(L10n.text("Press Stop to change the device or mode."), symbol: "lock")
-            } else if model.store.selected == nil {
-                notice(L10n.text("Open a Flutter project first."), symbol: "folder")
-            }
-            if model.standaloneTarget {
-                notice(L10n.text("The panel works independently for this device."), symbol: "macwindow")
-            }
-            HStack {
-                Button { model.chooseDevice(nil) } label: {
-                    Label(L10n.text("Automatic"), systemImage: model.store.selected?.deviceID == nil ? "checkmark" : "sparkles")
-                        .frame(maxWidth: .infinity)
-                        .foregroundStyle(model.store.selected?.deviceID == nil ? Color.accentColor : Color.primary)
+            Divider().padding(.bottom, 10)
+            VStack(alignment: .leading, spacing: 0) {
+                if let error = model.simulatorBootError {
+                    notice(error, symbol: "exclamationmark.triangle")
                 }
-                .disabled(!canEdit)
-                .help(L10n.text("Select a running simulator when pressing Run"))
-                .accessibilityValue(model.store.selected?.deviceID == nil ? L10n.text("Selected") : L10n.text("Not selected"))
-                Button { Task { await model.refreshDevices() } } label: {
-                    Label(model.simulators.refreshing ? L10n.text("Refreshing…") : L10n.text("Refresh"), systemImage: "arrow.clockwise")
-                        .frame(maxWidth: .infinity)
-                }.disabled(model.simulators.refreshing)
-            }.buttonStyle(.bordered).controlSize(.small)
-            if model.simulators.error != nil {
-                Button { model.message = model.simulators.error } label: {
-                    Label(L10n.text("Device discovery error"), systemImage: "exclamationmark.triangle")
-                }.foregroundStyle(.orange).controlSize(.small).padding(.top, 8)
-            }
+                HStack(spacing: 10) {
+                    HStack(spacing: 2) {
+                        ForEach(LaunchMode.allCases, id: \.self) { mode in
+                            Button { model.chooseLaunchMode(mode) } label: {
+                                Text(mode.title)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .frame(maxWidth: .infinity, minHeight: 24)
+                                    .background(model.launchMode == mode ? Color(nsColor: .controlBackgroundColor) : .clear,
+                                                in: RoundedRectangle(cornerRadius: 5))
+                                    .shadow(color: .black.opacity(model.launchMode == mode ? 0.08 : 0), radius: 1, y: 1)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!canEdit || !mode.supports(model.selectedDevice))
+                            .accessibilityValue(model.launchMode == mode ? L10n.text("Selected") : L10n.text("Not selected"))
+                        }
+                    }
+                    .padding(2).background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 7))
+                    .accessibilityLabel(L10n.text("Launch Mode"))
+                }.padding(.bottom, 10)
+                HStack {
+                    Button { model.chooseDevice(nil) } label: {
+                        Label(L10n.text("Automatic"), systemImage: model.store.selected?.deviceID == nil ? "checkmark" : "sparkles")
+                            .foregroundStyle(model.store.selected?.deviceID == nil ? Color.accentColor : Color.primary)
+                    }
+                    .disabled(!canEdit)
+                    .help(L10n.text("Select a running simulator when pressing Run"))
+                    .accessibilityValue(model.store.selected?.deviceID == nil ? L10n.text("Selected") : L10n.text("Not selected"))
+                    Spacer()
+                    Button { Task { await model.refreshDevices() } } label: {
+                        Label(model.simulators.refreshing ? L10n.text("Refreshing…") : L10n.text("Refresh"), systemImage: "arrow.clockwise")
+                    }.disabled(model.simulators.refreshing)
+                }.buttonStyle(.bordered).controlSize(.small)
+                if model.simulators.error != nil {
+                    Button { model.message = model.simulators.error } label: {
+                        Label(L10n.text("Device discovery error"), systemImage: "exclamationmark.triangle")
+                    }.foregroundStyle(.orange).controlSize(.small).padding(.top, 8)
+                }
+            }.padding(.horizontal, 14).padding(.bottom, 12)
         }
-        .padding(20).frame(width: PickerMetrics.width)
+        .frame(width: 460)
         .background(Color(nsColor: .windowBackgroundColor))
+        .task {
+            searchFocused = true
+            await model.refreshDevices()
+        }
     }
 
     private func notice(_ text: String, symbol: String) -> some View {
@@ -557,6 +552,7 @@ private struct DevicePicker: View {
     }
 }
 
+
 private struct DeviceChoiceRow: View {
     let symbol: String
     let title: String
@@ -572,66 +568,81 @@ private struct DeviceChoiceRow: View {
     let action: () -> Void
     @State private var hovered = false
 
+    private var foreground: Color { selected ? .white : .primary }
+    private var secondaryForeground: Color { selected ? .white.opacity(0.75) : .secondary }
+
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 0) {
             Button(action: action) {
-                HStack(spacing: 10) {
-                    Image(systemName: symbol).font(.system(size: 18))
-                        .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-                        .frame(width: 24).accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(title).font(.system(size: 13, weight: selected ? .semibold : .medium))
-                            .lineLimit(2).multilineTextAlignment(.leading)
-                        Text(detail).font(.system(size: 11)).foregroundStyle(.secondary)
-                            .lineLimit(2).multilineTextAlignment(.leading)
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold))
+                        .opacity(selected ? 1 : 0).frame(width: 12).accessibilityHidden(true)
+                    Image(systemName: symbol).font(.system(size: 14))
+                        .foregroundStyle(selected ? foreground : .secondary)
+                        .frame(width: 16).accessibilityHidden(true)
+                    Text(title).font(.system(size: 13, weight: selected ? .semibold : .regular))
+                        .lineLimit(1).truncationMode(.middle)
+                    Spacer(minLength: 6)
+                    if active || booting {
+                        Circle().fill(booting ? Color.orange : Color.green)
+                            .frame(width: 6, height: 6).accessibilityHidden(true)
                     }
-                    Spacer(minLength: 8)
-                    if let status {
-                        HStack(spacing: 4) {
-                            if active { Circle().fill(.green).frame(width: 5, height: 5).accessibilityHidden(true) }
-                            Text(status)
-                        }.font(.system(size: 10, weight: active ? .medium : .regular))
-                            .foregroundStyle(active ? Color.primary : Color.secondary).fixedSize()
-                    }
-                    Image(systemName: "checkmark").font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Color.accentColor).opacity(selected ? 1 : 0)
-                        .frame(width: 12).accessibilityHidden(true)
+                    Text(detail).font(.system(size: 12)).monospacedDigit()
+                        .foregroundStyle(secondaryForeground)
+                        .lineLimit(pinned == nil ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: pinned == nil ? 210 : 78, alignment: .trailing)
                 }
-                .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+                .foregroundStyle(foreground)
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                .padding(.trailing, 8)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain).disabled(!canSelect)
             .help("\(title) — \(detail)\(status.map { " — " + $0 } ?? "")")
             .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
             .accessibilityLabel("\(title), \(detail)\(status.map { ", " + $0 } ?? "")")
             .accessibilityValue(selected ? L10n.text("Selected") : L10n.text("Not selected"))
 
             if pinned != nil {
+                // Only simulators need launch and pin columns. Other targets use this space for the full SDK version.
                 Group {
                     if booting {
-                        ProgressView().controlSize(.small).accessibilityLabel(L10n.text("Starting {0}", "\(title)"))
+                        ProgressView().controlSize(.mini)
+                            .accessibilityLabel(L10n.text("Starting {0}", "\(title)"))
                     } else if let boot {
-                        Button(action: boot) { Image(systemName: "play.fill") }
-                            .buttonStyle(.borderless).foregroundStyle(Color.accentColor)
-                            .help(L10n.text("Start simulator {0}", "\(title)"))
-                            .accessibilityLabel(L10n.text("Start simulator {0}", "\(title)"))
+                        Button(action: boot) {
+                            Image(systemName: "play.fill").font(.system(size: 10))
+                                .frame(width: 24, height: 28).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).foregroundStyle(selected ? foreground : Color.accentColor)
+                        .help(L10n.text("Start simulator {0}", "\(title)"))
+                        .accessibilityLabel(L10n.text("Start simulator {0}", "\(title)"))
                     } else {
                         Color.clear.accessibilityHidden(true)
                     }
-                }.frame(width: 28, height: 28)
-                if let pin {
-                    Button(action: pin) { Image(systemName: pinned == true ? "pin.fill" : "pin") }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(pinned == true ? Color.accentColor : Color.secondary)
-                        .frame(width: 28, height: 28)
+                }.frame(width: 24, height: 28)
+                Group {
+                    if let pin {
+                        Button(action: pin) {
+                            Image(systemName: pinned == true ? "pin.fill" : "pin")
+                                .font(.system(size: 11))
+                                .frame(width: 24, height: 28).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(selected ? foreground : (pinned == true ? Color.accentColor : Color.secondary))
                         .help(pinned == true ? L10n.text("Unpin {0}", "\(title)") : L10n.text("Pin {0}", "\(title)"))
                         .accessibilityLabel(pinned == true ? L10n.text("Unpin {0}", "\(title)") : L10n.text("Pin {0}", "\(title)"))
-                }
+                    } else {
+                        Color.clear.accessibilityHidden(true)
+                    }
+                }.frame(width: 24, height: 28)
             }
         }
-        .padding(.horizontal, 10).padding(.vertical, 8)
-        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-        .background(selected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(hovered ? 0.05 : 0), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.leading, 8).padding(.trailing, 4)
+        .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+        .background(selected ? Color.accentColor : Color.primary.opacity(hovered ? 0.05 : 0), in: RoundedRectangle(cornerRadius: 6))
         .onHover { hovered = $0 }
     }
 }
@@ -832,6 +843,14 @@ private enum SettingsDestination: String, CaseIterable, Identifiable {
         case .panel: return L10n.text("Panel")
         }
     }
+    var subtitle: String {
+        switch self {
+        case .general: return L10n.text("Language, updates, and application launch")
+        case .projects: return L10n.text("Saved projects and launch options")
+        case .tools: return L10n.text("Simulator, links, and development environment")
+        case .panel: return L10n.text("Panel placement and behavior")
+        }
+    }
     var symbol: String {
         switch self {
         case .general: return "gearshape"
@@ -842,50 +861,83 @@ private enum SettingsDestination: String, CaseIterable, Identifiable {
     }
 }
 
+private enum SettingsAppearance {
+    static let canvas = adaptive(dark: 0x202124, light: 0xf5f5f7)
+    static let sidebar = adaptive(dark: 0x191a1c, light: 0xebebee)
+    static let surface = adaptive(dark: 0x292a2d, light: 0xffffff)
+    private static func adaptive(dark: UInt32, light: UInt32) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let rgb = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+            return NSColor(srgbRed: CGFloat((rgb >> 16) & 255) / 255,
+                           green: CGFloat((rgb >> 8) & 255) / 255,
+                           blue: CGFloat(rgb & 255) / 255, alpha: 1)
+        })
+    }
+}
+
 private struct SettingsSection<Content: View>: View {
     let title: String
     private let content: Content
-
     init(_ title: String, @ViewBuilder content: () -> Content) {
         self.title = title
         self.content = content()
     }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 0) { content }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1))
+                .background(SettingsAppearance.surface, in: RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.primary.opacity(0.09), lineWidth: 1))
         }
     }
 }
 
-private struct SettingsField<Content: View>: View {
+struct SettingsField<Content: View>: View {
     let title: String
+    var subtitle: String?
     private let content: Content
-
-    init(_ title: String, @ViewBuilder content: () -> Content) {
+    init(_ title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
+        self.subtitle = subtitle
         self.content = content()
     }
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 24) {
-                Text(title).font(.system(size: 13, weight: .medium)).fixedSize()
-                Spacer(minLength: 0)
-                content.frame(minWidth: 240, maxWidth: 380)
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                Text(title).font(.system(size: 13, weight: .medium))
-                content
+    private var label: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.system(size: 13, weight: .medium))
+            if let subtitle {
+                Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 18).padding(.vertical, 16)
+    }
+    var body: some View {
+        HStack(spacing: 24) {
+            label.frame(maxWidth: .infinity, alignment: .leading)
+            content.frame(width: 280, alignment: .trailing)
+        }
+        .padding(.horizontal, 18).padding(.vertical, 14)
+    }
+}
+
+struct SettingsToggle: View {
+    let title: String
+    var subtitle: String?
+    @Binding var isOn: Bool
+    var body: some View {
+        HStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title).font(.system(size: 13, weight: .medium))
+                if let subtitle {
+                    Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Toggle(title, isOn: $isOn).labelsHidden().toggleStyle(.switch).controlSize(.small)
+                .accessibilityLabel(title)
+        }.padding(.horizontal, 18).padding(.vertical, 14)
     }
 }
 
@@ -893,9 +945,65 @@ private struct SettingsNote: View {
     let text: String
     init(_ text: String) { self.text = text }
     var body: some View {
-        Text(text).font(.callout).foregroundStyle(.secondary)
+        Text(text).font(.system(size: 11)).foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 18).padding(.vertical, 14)
+            .padding(.horizontal, 18).padding(.vertical, 12)
+    }
+}
+
+private struct PanelPlacementPreview: View {
+    let side: PanelSide
+    let detached: Bool
+    var body: some View {
+        HStack(spacing: 24) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14).fill(.primary.opacity(0.04))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.primary.opacity(0.25), lineWidth: 2))
+                    .frame(width: 68, height: 116)
+                Capsule().fill(.primary.opacity(0.25)).frame(width: 22, height: 4).offset(y: -48)
+                ForEach([PanelSide.above, .right, .below, .left], id: \.self) { position in
+                    let vertical = position.isVertical
+                    let selected = !detached && side == position
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(selected ? Color.accentColor : Color.clear)
+                        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(
+                            selected ? Color.accentColor : Color.primary.opacity(0.2),
+                            style: StrokeStyle(lineWidth: 1, dash: selected ? [] : [3, 3])))
+                        .frame(width: vertical ? 10 : 62, height: vertical ? 90 : 10)
+                        .offset(x: position == .left ? -48 : (position == .right ? 48 : 0),
+                                y: position == .above ? -72 : (position == .below ? 72 : 0))
+                }
+            }.frame(width: 138, height: 166).accessibilityHidden(true)
+            Text(detached ? L10n.text("The panel can be moved independently of Simulator.") : L10n.text("If there is not enough room on the selected side, the panel appears on the opposite side."))
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 300, alignment: .leading)
+        }.frame(maxWidth: .infinity).padding(.vertical, 10)
+    }
+}
+
+private struct BackgroundLaunchSettings: View {
+    @ObservedObject var background: BackgroundLaunch
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SettingsToggle(title: L10n.text("Launch with Simulator"),
+                           subtitle: L10n.text("Open the panel when Simulator starts."),
+                           isOn: Binding(get: { background.enabled || background.status == .requiresApproval },
+                                         set: { background.setEnabled($0) }))
+            if background.status == .notFound || background.status == .requiresApproval {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.circle").foregroundStyle(.orange).accessibilityHidden(true)
+                    Text(background.status == .notFound ? L10n.text("Background helper unavailable") : background.title).font(.system(size: 11)).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    Button(L10n.text("Open Login Items…")) { background.systemSettings() }
+                        .controlSize(.small)
+                }.padding(.horizontal, 18).padding(.bottom, 14)
+            }
+            if let error = background.error {
+                Text(L10n.display(error)).font(.callout).foregroundStyle(.red)
+                    .textSelection(.enabled).padding(.horizontal, 18).padding(.bottom, 14)
+            }
+        }
     }
 }
 
@@ -909,46 +1017,54 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 10) {
                     Image(systemName: "iphone.gen3.radiowaves.left.and.right")
-                        .font(.system(size: 24)).foregroundStyle(Color.blue).accessibilityHidden(true)
-                    Text("SimFlutDock").font(.system(size: 23, weight: .bold))
-                }.padding(.horizontal, 22).padding(.top, 30).padding(.bottom, 26)
-                Divider().padding(.horizontal, 16)
-                VStack(spacing: 6) {
+                        .font(.system(size: 25)).foregroundStyle(Color.accentColor).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("SimFlutDock").font(.system(size: 15, weight: .semibold)).fixedSize()
+                        Text(L10n.text("Settings")).font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
+                }.padding(.horizontal, 18).padding(.top, 25).padding(.bottom, 28)
+                VStack(spacing: 5) {
                     ForEach(SettingsDestination.allCases) { item in
                         Button { destination = item } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: item.symbol).font(.system(size: 20)).frame(width: 26).accessibilityHidden(true)
-                                Text(item.title).font(.system(size: 15, weight: destination == item ? .semibold : .regular))
+                                Image(systemName: item.symbol).font(.system(size: 17)).frame(width: 22).accessibilityHidden(true)
+                                Text(item.title).font(.system(size: 13, weight: destination == item ? .semibold : .regular))
                                 Spacer(minLength: 0)
                             }
-                            .padding(.horizontal, 14).frame(height: 48)
-                            .foregroundStyle(destination == item ? Color.white : Color.primary)
-                            .background(destination == item ? Color.blue : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                            .padding(.horizontal, 12).frame(height: 40)
+                            .foregroundStyle(destination == item ? Color.accentColor : Color.primary)
+                            .background(destination == item ? Color.accentColor.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 7))
                             .contentShape(Rectangle())
                         }.buttonStyle(.plain)
                             .accessibilityValue(destination == item ? L10n.text("Selected") : L10n.text("Not selected"))
                     }
-                }.padding(14)
+                }.padding(.horizontal, 12)
                 Spacer()
                 Divider()
                 Button { model.showPanel() } label: {
                     Label(L10n.text("Show Panel"), systemImage: "rectangle.on.rectangle")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                }.buttonStyle(.plain).padding(20)
+                }.buttonStyle(.plain).font(.system(size: 12)).padding(18)
+                Text(L10n.text("Version {0}", appVersion)).font(.system(size: 10)).foregroundStyle(.secondary)
+                    .padding(.horizontal, 18).padding(.bottom, 18)
             }
-            .frame(width: 220)
-            .background(Color(nsColor: .underPageBackgroundColor))
+            .frame(width: 206)
+            .background(SettingsAppearance.sidebar)
             Divider()
             VStack(spacing: 0) {
                 HStack {
-                    Text(destination.title).font(.system(size: 23, weight: .semibold))
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(destination.title).font(.system(size: 25, weight: .semibold))
+                        Text(destination.subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
+                    }
                     Spacer()
                     if destination == .projects {
-                        Button(L10n.text("Open Project…"), systemImage: "plus") { model.openProject() }
+                        Button(L10n.text("Add Project"), systemImage: "plus") { model.openProject() }
+                            .buttonStyle(.borderedProminent)
                     }
-                }.padding(.horizontal, 28).padding(.top, 28).padding(.bottom, 22)
+                }.padding(.horizontal, 30).padding(.top, 28).padding(.bottom, 24)
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 22) {
                         if let error = model.store.persistenceError {
                             SettingsSection(L10n.text("Save Error")) {
                                 Text(L10n.display(error)).foregroundStyle(.red).textSelection(.enabled).padding(18)
@@ -979,20 +1095,21 @@ struct SettingsView: View {
                 }
                 Divider()
                 HStack {
-                    Text(L10n.text("Settings are saved automatically"))
+                    Label(L10n.text("Settings are saved automatically"), systemImage: "checkmark.circle")
                     Spacer()
-                    Text("SimFlutDock")
                 }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 28).frame(height: 40)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .windowBackgroundColor))
+                .background(SettingsAppearance.canvas)
         }
         .environment(\.locale, L10n.locale)
         .tint(.blue)
-        .frame(minWidth: 920, minHeight: 640)
+        .frame(minWidth: 900, minHeight: 640)
     }
 
+    private var appVersion: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.5" }
+
     private var projectSettings: some View {
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: 22) {
             if model.store.projects.isEmpty {
                 ContentUnavailableView(L10n.text("Open a Flutter Project"), systemImage: "folder", description: Text(L10n.text("Select a folder containing pubspec.yaml. The app starts only after you press Run.")))
             } else {
@@ -1023,7 +1140,7 @@ struct SettingsView: View {
     }
 
     private var toolsSettings: some View {
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: 22) {
             SettingsSection(L10n.text("Project and Simulator")) {
                 SettingsField(L10n.text("Project")) {
                     Picker(L10n.text("Project"), selection: Binding(get: { model.store.selectedID }, set: { id in
@@ -1045,27 +1162,22 @@ struct SettingsView: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
 
-            SettingsSection("Flutter SDK") {
-                SettingsField(L10n.text("Default SDK")) {
-                    HStack {
+            SettingsSection(L10n.text("Development Environment")) {
+                SettingsField(L10n.text("Default Flutter SDK"), subtitle: L10n.text("Used when no project SDK is configured. Supports FVM.")) {
+                    HStack(spacing: 8) {
                         TextField(L10n.text("Automatic"), text: $model.globalSDK)
                             .textFieldStyle(.roundedBorder).accessibilityLabel(L10n.text("Default Flutter SDK"))
-                        Button(L10n.text("Choose…")) { model.chooseSDK { model.globalSDK = $0 } }
+                        Button(L10n.text("Choose…")) { model.chooseSDK { model.globalSDK = $0 } }.controlSize(.small)
                     }
                 }
                 Divider()
-                SettingsNote(L10n.text("Used when the project has no SDK configured. Searches Homebrew, standard SDK folders, and the project's .fvm/flutter_sdk."))
-            }
-            SettingsSection(L10n.text("Development Environment")) {
-                SettingsField(L10n.text("Flutter and Xcode")) {
+                SettingsField(L10n.text("Flutter and Xcode"), subtitle: L10n.text("Uses the active Xcode installation.")) {
                     HStack {
-                        Spacer(minLength: 0)
                         if model.checkingTools { ProgressView().controlSize(.small) }
-                        Button(model.checkingTools ? L10n.text("Checking…") : L10n.text("Check")) { model.checkTools() }.disabled(model.checkingTools)
+                        Button(model.checkingTools ? L10n.text("Checking…") : L10n.text("Check")) { model.checkTools() }
+                            .disabled(model.checkingTools).controlSize(.small)
                     }
                 }
-                Divider()
-                SettingsNote(L10n.text("Xcode is selected from system settings or an installed app. Finder uses its own PATH."))
                 if let error = model.simulators.error {
                     Divider()
                     Text(L10n.display(error)).font(.callout).foregroundStyle(.red).textSelection(.enabled).padding(18)
@@ -1075,93 +1187,76 @@ struct SettingsView: View {
     }
 
     private var panelSettings: some View {
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: 22) {
             SettingsSection(L10n.text("Panel Placement")) {
-                Toggle(L10n.text("Free Position"), isOn: $model.freePanel)
-                    .toggleStyle(.switch).padding(18)
+                SettingsToggle(title: L10n.text("Free Position"),
+                               subtitle: L10n.text("The panel can be moved independently of Simulator."), isOn: $model.freePanel)
                 Divider()
                 SettingsField(L10n.text("Simulator Side")) {
                     Picker(L10n.text("Side of the Simulator window"), selection: $model.panelSide) {
-                        ForEach(PanelSide.allCases, id: \.self) { side in Text(side.title).tag(side) }
+                        ForEach([PanelSide.above, .right, .below, .left], id: \.self) { side in Text(side.title).tag(side) }
                     }.labelsHidden().pickerStyle(.segmented).disabled(model.standalonePanel)
                 }
                 Divider()
-                SettingsNote(model.freePanel ? L10n.text("Turn off Free Position to choose an attachment side.") : (model.standalonePanel ? L10n.text("For this device, the panel works independently of Simulator.") : L10n.text("If there is not enough room on the selected side, the panel appears on the opposite side.")))
+                PanelPlacementPreview(side: model.panelSide, detached: model.standalonePanel)
+            }
+            SettingsSection(L10n.text("Menu Bar Icon")) {
+                SettingsToggle(title: L10n.text("Hide or show the panel on click"),
+                               subtitle: L10n.text("When the panel is not attached to a Simulator window, one click hides it completely and the next shows it again."),
+                               isOn: $model.toggleUnboundPanelFromTray)
             }
             SettingsSection(L10n.text("Simulator Window Access")) {
-                SettingsField(L10n.text("Accessibility")) {
-                    HStack {
-                        Spacer(minLength: 0)
-                        Label(model.tracker.trusted ? L10n.text("Allowed") : L10n.text("Permission required"), systemImage: model.tracker.trusted ? "checkmark.circle" : "lock")
-                            .foregroundStyle(.secondary)
+                SettingsField(L10n.text("Accessibility"), subtitle: L10n.text("Allow access to attach the panel to a Simulator window.")) {
+                    HStack(spacing: 12) {
+                        Label(model.tracker.trusted ? L10n.text("Allowed") : L10n.text("Permission required"),
+                              systemImage: model.tracker.trusted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                            .font(.system(size: 11)).foregroundStyle(model.tracker.trusted ? Color.secondary : Color.orange)
+                        if !model.tracker.trusted {
+                            Button(L10n.text("Allow Access…")) { model.tracker.requestPermission() }.controlSize(.small)
+                        }
                     }
                 }
                 Divider()
-                SettingsNote(L10n.text("Enable SimFlutDock in System Settings → Privacy & Security → Accessibility. Access is detected automatically."))
-                if !model.tracker.trusted {
-                    Divider()
-                    HStack {
-                        Button(L10n.text("Allow Access…")) { model.tracker.requestPermission() }
-                        Spacer()
-                        Button(L10n.text("Check Permission")) { model.tracker.refresh() }
-                    }.padding(18)
-                }
-                Divider()
-                SettingsNote(L10n.text("You can select a window manually in the panel menu: ⚙ → Panel Position → Attach to Simulator Window."))
+                HStack {
+                    Text(L10n.text("You can select a window manually in the panel menu: ⚙ → Panel Position → Attach to Simulator Window."))
+                        .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 12)
+                    Button(L10n.text("Check Permission")) { model.tracker.refresh() }.controlSize(.small)
+                }.padding(.horizontal, 18).padding(.vertical, 12)
             }
         }
     }
 
     private var generalSettings: some View {
-        VStack(alignment: .leading, spacing: 28) {
-            SettingsSection("SimFlutDock") {
-                SettingsField(L10n.text("Version")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.4")
-                        .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .textSelection(.enabled)
+        VStack(alignment: .leading, spacing: 22) {
+            SettingsSection(L10n.text("Preferences")) {
+                SettingsField(L10n.text("Application Language"), subtitle: L10n.text("Changes apply immediately.")) {
+                    Picker(L10n.text("Language"), selection: $model.language) {
+                        ForEach(AppLanguage.allCases) { language in Text(language.title).tag(language) }
+                    }.labelsHidden().accessibilityLabel(L10n.text("Language")).frame(width: 190)
                 }
                 Divider()
-                SettingsField(L10n.text("Build")) {
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "5")
-                        .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
+                BackgroundLaunchSettings(background: model.background)
             }
             SettingsSection(L10n.text("App Updates")) {
                 AppUpdateSettings(updater: model.updater)
             }
-            SettingsSection(L10n.text("Language")) {
-                SettingsField(L10n.text("Language")) {
-                    Picker(L10n.text("Language"), selection: $model.language) {
-                        ForEach(AppLanguage.allCases) { language in
-                            Text(language.title).tag(language)
-                        }
-                    }.labelsHidden().accessibilityLabel(L10n.text("Language"))
-                }
-                Divider()
-                SettingsNote(L10n.text("Follows the system language. English is used for unsupported languages."))
-            }
-            SettingsSection(L10n.text("Automatic Launch")) {
-                Toggle(L10n.text("Launch with Simulator"), isOn: Binding(get: { model.background.enabled || model.background.status == .requiresApproval }, set: { model.background.setEnabled($0) }))
-                    .toggleStyle(.switch).padding(18)
-                Divider()
-                SettingsField(L10n.text("Background Helper")) {
-                    Text(model.background.title).font(.callout).foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                if let error = model.background.error {
-                    Divider()
-                    Text(L10n.display(error)).font(.callout).foregroundStyle(.red).textSelection(.enabled).padding(18)
-                }
-                Divider()
-                SettingsField(L10n.text("macOS Settings")) {
-                    Button(L10n.text("Open Login Items…")) { model.background.systemSettings() }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
+            SettingsSection(L10n.text("About")) {
+                HStack(spacing: 14) {
+                    Image(systemName: "iphone.gen3.radiowaves.left.and.right")
+                        .font(.system(size: 28)).foregroundStyle(Color.accentColor).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("SimFlutDock").font(.system(size: 14, weight: .semibold))
+                        Text(L10n.text("Version {0} · Build {1}", appVersion,
+                                       Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "5"))
+                            .font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled)
+                    }
+                    Spacer()
+                }.padding(18)
             }
         }
     }
+
 }
 
 private struct SimulatorToolsSettings: View {
@@ -1177,13 +1272,14 @@ private struct SimulatorToolsSettings: View {
             && !model.simulatorToolBusy && session?.state.isBusy != true
     }
     var body: some View {
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: 22) {
             SettingsSection(L10n.text("Saved Links")) {
                 if project.deepLinks.isEmpty {
                     SettingsNote(L10n.text("Save links to screens and test scenarios for this project."))
                 }
                 ForEach(project.deepLinks) { link in
                     HStack(spacing: 12) {
+                        Image(systemName: "link").font(.system(size: 18)).foregroundStyle(.secondary).accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(link.name).font(.body.weight(.medium))
                             Text(link.url).font(.callout).foregroundStyle(.secondary)
@@ -1283,32 +1379,32 @@ private struct SavedProjectSettingsRow: View {
                         Spacer(minLength: 8)
                         Text(model.manager.sessions[project.id]?.state.title ?? L10n.text("Ready"))
                             .font(.caption).foregroundStyle(.secondary)
-                        Image(systemName: "checkmark").foregroundStyle(Color.blue)
-                            .opacity(selected ? 1 : 0).frame(width: 16)
+                        Image(systemName: selected ? "checkmark.circle.fill" : "circle").foregroundStyle(selected ? Color.accentColor : Color.secondary.opacity(0.4))
+                            .frame(width: 18)
                     }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).help(project.path)
                     .accessibilityValue(selected ? L10n.text("Selected") : L10n.text("Not selected"))
 
-                HStack(spacing: 4) {
-                    action(L10n.text("Open project folder for {0}", project.name), symbol: "folder") {
+                Menu {
+                    Button(L10n.text("Open project folder for {0}", project.name), systemImage: "folder") {
                         model.openProjectFolder(project)
                     }
-                    action(L10n.text("Open app data for {0}", project.name), symbol: "externaldrive") {
+                    Button(L10n.text("Open app data for {0}", project.name), systemImage: "externaldrive") {
                         model.openProjectDataFolder(project.id)
                     }.disabled(model.simulatorToolBusy)
-                    action(L10n.text("Reset app permissions for {0}", project.name), symbol: "lock.rotation") {
+                    Button(L10n.text("Reset app permissions for {0}", project.name), systemImage: "lock.rotation") {
                         model.resetProjectPermissions(project.id)
                     }.disabled(busy || model.simulatorToolBusy)
-                        .help(busy ? L10n.text("Press Stop before resetting permissions") : L10n.text("Reset app permissions"))
-                    action(L10n.text("Change location for {0}", project.name), symbol: "folder.badge.gearshape") {
+                    Button(L10n.text("Change location for {0}", project.name), systemImage: "folder.badge.gearshape") {
                         model.openProject(replacing: project.id)
                     }.disabled(busy || model.simulatorToolBusy)
-                    Button(role: .destructive) { confirmRemoval = true } label: {
-                        Image(systemName: "trash").frame(width: 28, height: 28)
-                    }.disabled(busy || model.simulatorToolBusy || model.manager.shuttingDown)
-                        .help(L10n.text("Remove from List"))
-                        .accessibilityLabel(L10n.text("Remove saved project {0}", project.name))
-                }.buttonStyle(.borderless).controlSize(.small)
+                    Divider()
+                    Button(L10n.text("Remove from List"), role: .destructive) { confirmRemoval = true }
+                        .disabled(busy || model.simulatorToolBusy || model.manager.shuttingDown)
+                } label: {
+                    Image(systemName: "ellipsis").frame(width: 28, height: 24)
+                }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .accessibilityLabel(L10n.text("Actions for {0}", project.name))
             }.padding(.horizontal, 18).padding(.vertical, 14)
             if !FileManager.default.fileExists(atPath: project.path) {
                 Text(L10n.text("Folder unavailable. Choose a new location or remove the entry."))
@@ -1334,10 +1430,7 @@ private struct SavedProjectSettingsRow: View {
         }
     }
 
-    private func action(_ title: String, symbol: String, perform: @escaping () -> Void) -> some View {
-        Button(action: perform) { Image(systemName: symbol).frame(width: 28, height: 28) }
-            .help(title).accessibilityLabel(title)
-    }
+
 }
 
 struct ProjectEditor: View {
@@ -1349,28 +1442,32 @@ struct ProjectEditor: View {
     private var busy: Bool { model.manager.sessions[project.id]?.hasWork ?? false }
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            SettingsSection(L10n.text("Launch")) {
+            SettingsSection(L10n.text("Project Options")) {
+                SettingsField(L10n.text("Name")) {
+                    TextField(L10n.text("Project name"), text: $project.name)
+                        .textFieldStyle(.roundedBorder).accessibilityLabel(L10n.text("Project name"))
+                        .onSubmit { save() }
+                }.disabled(busy)
+                Divider()
                 SettingsField(L10n.text("Device and Mode")) { DeviceMenu(model: model) }
                 Divider()
-                HStack { SessionButtons(model: model); Spacer(); Button(L10n.text("Logs…")) { model.showLogs() } }.padding(18)
+                HStack {
+                    SessionButtons(model: model)
+                    Spacer()
+                    Button(L10n.text("Logs…")) { model.showLogs() }.controlSize(.small)
+                }.padding(.horizontal, 18).padding(.vertical, 12)
                 if let error = model.manager.sessions[project.id]?.error {
                     Button(error) { model.showLogs() }.buttonStyle(.plain).foregroundStyle(.red).padding(18)
                 }
             }
-            SettingsSection(L10n.text("Project Options")) {
-                SettingsField(L10n.text("Name")) {
-                    TextField(L10n.text("Project name"), text: $project.name).textFieldStyle(.roundedBorder).onSubmit { save() }
-                }
-                Divider()
-                SettingsField(L10n.text("Project Flutter SDK")) {
-                    HStack {
+            SettingsSection("Flutter SDK") {
+                SettingsField(L10n.text("Project Flutter SDK"), subtitle: L10n.text("Uses the project SDK or the default SDK.")) {
+                    HStack(spacing: 8) {
                         TextField(L10n.text("Automatic / FVM"), text: Binding(get: { project.sdkPath ?? "" }, set: { project.sdkPath = $0.isEmpty ? nil : $0; save() }))
                             .textFieldStyle(.roundedBorder).accessibilityLabel(L10n.text("Project Flutter SDK"))
-                        Button(L10n.text("Choose…")) { model.chooseSDK { project.sdkPath = $0; save() } }
+                        Button(L10n.text("Choose…")) { model.chooseSDK { project.sdkPath = $0; save() } }.controlSize(.small)
                     }
                 }
-                Divider()
-                SettingsNote(L10n.text("Changes are saved automatically."))
             }.disabled(busy)
             if busy {
                 Text(L10n.text("Press Stop to change launch options. Switching projects preserves the session."))
