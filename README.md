@@ -10,7 +10,7 @@
 
 ## Установка
 
-[**Скачать SimFlutDock 1.0.5 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.5/SimFlutDock-1.0.5.dmg)
+[**Скачать SimFlutDock 1.0.6 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.6/SimFlutDock-1.0.6.dmg)
 
 Нужны **macOS 14+**, **Flutter SDK** и полный **Xcode**. Поддерживаются Apple Silicon и Intel. Откройте DMG и перетащите приложение в **Applications**.
 

@@ -1106,7 +1106,7 @@ struct SettingsView: View {
         .frame(minWidth: 900, minHeight: 640)
     }
 
-    private var appVersion: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.5" }
+    private var appVersion: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.6" }
 
     private var projectSettings: some View {
         VStack(alignment: .leading, spacing: 22) {

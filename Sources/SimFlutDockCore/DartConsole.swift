@@ -7,6 +7,7 @@ import Foundation
     private var receiver: Task<Void, Never>?
     private var rpc: MachineClient!
     private var closed = false
+    private var resumingIsolates: Set<String> = []
     public var onOutput: ((Data, Bool) -> Void)?
     public var onDisconnect: ((Error) -> Void)?
     public init() {
@@ -17,6 +18,9 @@ import Foundation
                 catch { self?.failed(error) }
             }
         }
+    }
+    init(rpc: MachineClient) {
+        self.rpc = rpc
     }
     public func connectAndResume(_ url: URL) async throws {
         // VM-service URLs come from the owned flutter process. Only local transports are needed.
@@ -37,6 +41,9 @@ import Foundation
         }
         _ = try await rpc.request("streamListen", params: ["streamId": "Stdout"], timeout: 20)
         _ = try await rpc.request("streamListen", params: ["streamId": "Stderr"], timeout: 20)
+        // --start-paused also pauses isolates spawned after main resumes (e.g. Drift).
+        // Listen before the snapshot so none can appear between discovery and subscription.
+        _ = try await rpc.request("streamListen", params: ["streamId": "Debug"], timeout: 20)
         try await resumePausedIsolates()
     }
     public func resumePausedIsolates() async throws {
@@ -47,11 +54,17 @@ import Foundation
         }
         for isolate in isolates {
             guard let id = isolate["id"] as? String, isolate["isSystemIsolate"] as? Bool != true else { continue }
-            let detail = try await rpc.request("getIsolate", params: ["isolateId": id], timeout: 20)
-            let state = (detail["result"] as? [String: Any])?["pauseEvent"] as? [String: Any]
-            if state?["kind"] as? String == "PauseStart" {
-                _ = try await rpc.request("resume", params: ["isolateId": id], timeout: 20)
-            }
+            try await resumeStartupIsolate(id)
+        }
+    }
+    private func resumeStartupIsolate(_ id: String) async throws {
+        guard !closed, resumingIsolates.insert(id).inserted else { return }
+        defer { resumingIsolates.remove(id) }
+        let detail = try await rpc.request("getIsolate", params: ["isolateId": id], timeout: 20)
+        let state = (detail["result"] as? [String: Any])?["pauseEvent"] as? [String: Any]
+        // Recheck: an event may arrive after the snapshot already resumed this isolate.
+        if !closed, state?["kind"] as? String == "PauseStart" {
+            _ = try await rpc.request("resume", params: ["isolateId": id], timeout: 20)
         }
     }
     /// Heap usage of the main Dart isolate; not the application's total RSS.
@@ -78,6 +91,17 @@ import Foundation
     }
     public func receive(_ object: [String: Any]) {
         if rpc.receive(object) { return }
+        if !closed, object["method"] as? String == "streamNotify",
+            let params = object["params"] as? [String: Any], params["streamId"] as? String == "Debug",
+            let event = params["event"] as? [String: Any], event["kind"] as? String == "PauseStart",
+            let isolate = event["isolate"] as? [String: Any], isolate["isSystemIsolate"] as? Bool != true,
+            let id = isolate["id"] as? String
+        {
+            Task { [weak self] in
+                do { try await self?.resumeStartupIsolate(id) } catch { self?.failed(error) }
+            }
+            return
+        }
         guard object["method"] as? String == "streamNotify", let params = object["params"] as? [String: Any],
               let stream = params["streamId"] as? String, ["Stdout", "Stderr"].contains(stream),
               let event = params["event"] as? [String: Any], event["kind"] as? String == "WriteEvent",

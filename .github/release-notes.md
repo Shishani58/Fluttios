@@ -1,23 +1,21 @@
-## SimFlutDock 1.0.5
+## SimFlutDock 1.0.6
 
 Native Flutter controls beside Simulator / Device Hub. English and Russian UI.
 Нативная панель управления Flutter рядом с Simulator / Device Hub. Русский и английский интерфейс.
 
 ### Changes / Изменения
 
-- Redesigned settings with grouped controls, clearer navigation, and a panel placement preview.
-- Refined device picker with search focus, compact rows, and refreshed discovery when opened.
-- Added an option to hide/show the unbound panel from the menu bar. Right-click or Control-click opens settings.
+- Fixed a black screen when launching Flutter apps that create background isolates, including Drift database workers. SimFlutDock now resumes newly created isolates paused at startup.
+- Preserved breakpoint pauses and prevented duplicate resume requests. Added regression tests for startup and hot restart.
 
-- Обновлены настройки: сгруппированные элементы, удобная навигация и предпросмотр расположения панели.
-- Улучшен выбор устройств: фокус на поиске, компактные строки и обновление списка при открытии.
-- Добавлена настройка скрытия и показа непривязанной панели нажатием на иконку в строке меню. Правое нажатие или Control-click открывает настройки.
+- Исправлен чёрный экран при запуске Flutter-приложений с фоновыми isolate, включая базы данных Drift. SimFlutDock теперь снимает стартовую паузу и с новых isolate.
+- Сохранены паузы на точках останова, исключены повторные запросы resume. Добавлены регрессионные тесты запуска и hot restart.
 
 ### Download / Скачать
 
-Download **SimFlutDock-1.0.5.dmg** below. Universal app for **Apple Silicon and Intel**, **macOS 14+**. Open the DMG, drag **SimFlutDock.app** to **Applications**, then launch the installed copy. Flutter SDK and full Xcode are required to run projects.
+Download **SimFlutDock-1.0.6.dmg** below. Universal app for **Apple Silicon and Intel**, **macOS 14+**. Open the DMG, drag **SimFlutDock.app** to **Applications**, then launch the installed copy. Flutter SDK and full Xcode are required to run projects.
 
-Скачайте **SimFlutDock-1.0.5.dmg** ниже. Универсальное приложение для **Apple Silicon и Intel**, **macOS 14+**. Откройте DMG, перетащите **SimFlutDock.app** в **Applications** и запускайте установленную копию. Для запуска проектов нужны Flutter SDK и полный Xcode.
+Скачайте **SimFlutDock-1.0.6.dmg** ниже. Универсальное приложение для **Apple Silicon и Intel**, **macOS 14+**. Откройте DMG, перетащите **SimFlutDock.app** в **Applications** и запускайте установленную копию. Для запуска проектов нужны Flutter SDK и полный Xcode.
 
 ### Signing / Подпись
 
