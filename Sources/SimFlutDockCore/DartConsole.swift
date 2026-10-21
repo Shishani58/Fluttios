@@ -14,8 +14,9 @@ import Foundation
         rpc = MachineClient(arrayWrapped: false) { [weak self] data in
             guard let self, let socket = self.socket, !self.closed else { throw SimFlutDockError.exited }
             Task { [weak self] in
-                do { try await socket.send(.string(String(decoding: data, as: UTF8.self))) }
-                catch { self?.failed(error) }
+                do { try await socket.send(.string(String(decoding: data, as: UTF8.self))) } catch {
+                    self?.failed(error)
+                }
             }
         }
     }
@@ -24,19 +25,29 @@ import Foundation
     }
     public func connectAndResume(_ url: URL) async throws {
         // VM-service URLs come from the owned flutter process. Only local transports are needed.
-        guard ["ws", "wss"].contains(url.scheme ?? ""), ["127.0.0.1", "localhost", "::1"].contains(url.host ?? "") else {
+        guard ["ws", "wss"].contains(url.scheme ?? ""), ["127.0.0.1", "localhost", "::1"].contains(url.host ?? "")
+        else {
             throw SimFlutDockError.message(L10n.text("Flutter returned an unsupported Dart VM address."))
         }
-        let socket = URLSession.shared.webSocketTask(with: url); self.socket = socket; socket.resume()
+        let socket = URLSession.shared.webSocketTask(with: url)
+        self.socket = socket
+        socket.resume()
         receiver = Task { [weak self] in
             while !Task.isCancelled {
                 do {
                     let message = try await socket.receive()
                     let data: Data
-                    switch message { case .data(let bytes): data = bytes; case .string(let string): data = Data(string.utf8); @unknown default: continue }
+                    switch message {
+                    case .data(let bytes): data = bytes
+                    case .string(let string): data = Data(string.utf8)
+                    @unknown default: continue
+                    }
                     guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
                     self?.receive(object)
-                } catch { if !Task.isCancelled { self?.failed(error) }; return }
+                } catch {
+                    if !Task.isCancelled { self?.failed(error) }
+                    return
+                }
             }
         }
         _ = try await rpc.request("streamListen", params: ["streamId": "Stdout"], timeout: 20)
@@ -73,8 +84,11 @@ import Foundation
         try Task.checkCancellation()
         let vm = try await rpc.request("getVM", params: [:], timeout: 4)
         guard let isolates = (vm["result"] as? [String: Any])?["isolates"] as? [[String: Any]],
-              let main = isolates.first(where: { $0["name"] as? String == "main" && $0["isSystemIsolate"] as? Bool != true }),
-              let id = main["id"] as? String else { return nil }
+            let main = isolates.first(where: {
+                $0["name"] as? String == "main" && $0["isSystemIsolate"] as? Bool != true
+            }),
+            let id = main["id"] as? String
+        else { return nil }
         try Task.checkCancellation()
         let usage = try await rpc.request("getMemoryUsage", params: ["isolateId": id], timeout: 4)
         return Self.heapBytes(from: usage)
@@ -82,11 +96,12 @@ import Foundation
 
     nonisolated static func heapBytes(from response: [String: Any]) -> Int64? {
         guard let result = response["result"] as? [String: Any],
-              result["type"] as? String == "MemoryUsage",
-              let bytes = result["heapUsage"] as? NSNumber,
-              CFGetTypeID(bytes) != CFBooleanGetTypeID(),
-              bytes.doubleValue >= 0, bytes.doubleValue < Double(Int64.max),
-              bytes.doubleValue.rounded(.towardZero) == bytes.doubleValue else { return nil }
+            result["type"] as? String == "MemoryUsage",
+            let bytes = result["heapUsage"] as? NSNumber,
+            CFGetTypeID(bytes) != CFBooleanGetTypeID(),
+            bytes.doubleValue >= 0, bytes.doubleValue < Double(Int64.max),
+            bytes.doubleValue.rounded(.towardZero) == bytes.doubleValue
+        else { return nil }
         return bytes.int64Value
     }
     public func receive(_ object: [String: Any]) {
@@ -103,17 +118,24 @@ import Foundation
             return
         }
         guard object["method"] as? String == "streamNotify", let params = object["params"] as? [String: Any],
-              let stream = params["streamId"] as? String, ["Stdout", "Stderr"].contains(stream),
-              let event = params["event"] as? [String: Any], event["kind"] as? String == "WriteEvent",
-              let bytes = event["bytes"] as? String, let data = Data(base64Encoded: bytes) else { return }
+            let stream = params["streamId"] as? String, ["Stdout", "Stderr"].contains(stream),
+            let event = params["event"] as? [String: Any], event["kind"] as? String == "WriteEvent",
+            let bytes = event["bytes"] as? String, let data = Data(base64Encoded: bytes)
+        else { return }
         onOutput?(data, stream == "Stderr")
     }
     private func failed(_ error: Error) {
         guard !closed else { return }
-        rpc.close(error: error); onDisconnect?(error); close()
+        rpc.close(error: error)
+        onDisconnect?(error)
+        close()
     }
     public func close() {
-        closed = true; rpc.close(); receiver?.cancel(); receiver = nil
-        socket?.cancel(with: .goingAway, reason: nil); socket = nil
+        closed = true
+        rpc.close()
+        receiver?.cancel()
+        receiver = nil
+        socket?.cancel(with: .goingAway, reason: nil)
+        socket = nil
     }
 }

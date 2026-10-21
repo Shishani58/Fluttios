@@ -13,11 +13,17 @@ public struct AutomaticPanelBinding {
         knownIDs = current
         let previous = windowID
         let focused = focusedID.flatMap { current.contains($0) ? $0 : nil }
-        if let focused, newIDs.contains(focused) { windowID = focused }
-        else if newIDs.count == 1 { windowID = newIDs.first }
-        else if let focused { windowID = focused }
-        else if let previous, current.contains(previous) { windowID = previous }
-        else { windowID = current.count == 1 ? current.first : nil }
+        if let focused, newIDs.contains(focused) {
+            windowID = focused
+        } else if newIDs.count == 1 {
+            windowID = newIDs.first
+        } else if let focused {
+            windowID = focused
+        } else if let previous, current.contains(previous) {
+            windowID = previous
+        } else {
+            windowID = current.count == 1 ? current.first : nil
+        }
         guard let windowID else { return false }
         return newIDs.contains(windowID) || previous == nil
     }

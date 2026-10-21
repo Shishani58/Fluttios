@@ -10,7 +10,7 @@ A native macOS utility to run Flutter projects, use Hot Reload and read logs wit
 
 ## Install
 
-[**Download SimFlutDock 1.0.6 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.6/SimFlutDock-1.0.6.dmg)
+[**Download SimFlutDock 1.0.7 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.7/SimFlutDock-1.0.7.dmg)
 
 Requires **macOS 14+**, **Flutter SDK** and full **Xcode**. Supports Apple Silicon and Intel. Open the DMG and drag the app to **Applications**.
 
@@ -18,15 +18,15 @@ The build is not notarized by Apple. If macOS blocks the first launch, follow [A
 
 ### Updates
 
-The app checks stable GitHub Releases at launch, at most once a day. Check manually using **⚙ → Check for Updates…** or **Settings → General → App Updates**. Automatic checks can be disabled.
+The app checks stable GitHub Releases at launch, at most once a day. Check manually using **Settings → General → App Updates**. Automatic checks can be disabled.
 
-When a new version is available, choose **Download Update**. The app saves the DMG in a separate folder in Downloads, verifies its size and SHA-256, and opens the installer. Quit SimFlutDock, drag the new app to Applications, confirm replacement, and launch it again. Quitting asks for confirmation before stopping active Flutter sessions. Downloads can be cancelled; failed checks can be retried.
+A manual **Check for Updates…** downloads and prepares a newer version automatically. A background check announces the update; choose **Download Update** to proceed. The app verifies the size, SHA-256, version, and signature, then offers **Quit and Install**. It quits, replaces the installed copy, and relaunches automatically. Stopping active Flutter sessions requires confirmation; cancelling quit postpones installation. Downloads can be cancelled. Automatic replacement requires a writable installation folder outside a DMG; a failed replacement restores the previous version.
 
 To ship an update, publish a stable `vX.Y.Z` release containing `SimFlutDock-X.Y.Z.dmg`, `SimFlutDock-X.Y.Z.dmg.sha256`, and `app-update.json`. The existing `scripts/build-dmg.sh` and release workflow create and publish all three files. The version must be higher than the installed version; prereleases are not offered.
 
 ## Features
 
-- **Run, Hot Reload, Hot Restart and Stop**, with an independent session per project.
+- **Run, Hot Reload, Hot Restart and Stop**, with an independent session for each project and device. Switching devices changes the session being controlled while other sessions keep running.
 - A panel beside **Simulator / Device Hub**, or a floating panel.
 - Device and launch mode selection, with **FVM** support.
 - Logs, saved deep links and quick access to project and app data folders.
@@ -40,13 +40,21 @@ To ship an update, publish a stable `vX.Y.Z` release containing `SimFlutDock-X.Y
 
 Hot Reload and Hot Restart require Debug mode. After native code or plugin changes, use **Stop → Run**.
 
+### Memory and background processes
+
+`dart:frontend_server_aot.dart.snapshot` is Flutter's compiler for Debug and Hot Reload. `Runner` is the launched app; `SimMetalHost` and `SimRenderServer` are iOS Simulator graphics services. Their memory is accounted for separately from SimFlutDock. **Stop** ends the Flutter session and remaining processes in its owned process group; the simulator stays booted. Shut down the specific device with `xcrun simctl shutdown <UDID>` when it is no longer needed.
+
+SimFlutDock retains at most 2000 log entries and 2 MiB of log text per session, truncating individual entries to approximately 16 KiB. Oldest entries are discarded first. Removing an inactive project releases all its sessions and logs. These limits apply to retained log text, not total application memory.
+
 ## Build from source
 
 ```bash
 git clone https://github.com/Shishani58/Fluttios.git
 cd Fluttios
-./scripts/build-app.sh
-open dist/SimFlutDock.app
+APP_OUTPUT=/Applications/SimFlutDock.app ./scripts/build-app.sh
+open /Applications/SimFlutDock.app
 ```
 
-To build a DMG: `./scripts/build-dmg.sh`.
+The command updates the installed copy in Applications. To build separately without installing, use `./scripts/build-app.sh`; the bundle in `dist` does not need to be installed again. To build a DMG: `./scripts/build-dmg.sh`.
+
+For local checks, source layout, and integration tests, see [Contributing](CONTRIBUTING.md).

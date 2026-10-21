@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SimFlutDockCore
 
 final class AutomaticPanelBindingTests: XCTestCase {
@@ -13,7 +14,8 @@ final class AutomaticPanelBindingTests: XCTestCase {
 
     func testNewSimulatorReplacesPreviouslyAttachedWindow() {
         var binding = AutomaticPanelBinding()
-        let old = UUID(), launched = UUID()
+        let old = UUID()
+        let launched = UUID()
         binding.update(windowIDs: [old], focusedID: old)
         XCTAssertTrue(binding.update(windowIDs: [old, launched], focusedID: old))
         XCTAssertEqual(binding.windowID, launched)
@@ -21,7 +23,8 @@ final class AutomaticPanelBindingTests: XCTestCase {
 
     func testMultipleWindowsUseFocusWithoutArbitrarySelection() {
         var binding = AutomaticPanelBinding()
-        let first = UUID(), second = UUID()
+        let first = UUID()
+        let second = UUID()
         XCTAssertFalse(binding.update(windowIDs: [first, second], focusedID: nil))
         XCTAssertNil(binding.windowID)
         XCTAssertTrue(binding.update(windowIDs: [first, second], focusedID: second))
@@ -32,7 +35,8 @@ final class AutomaticPanelBindingTests: XCTestCase {
 
     func testHostTerminationAndRelaunch() {
         var binding = AutomaticPanelBinding()
-        let original = UUID(), relaunched = UUID()
+        let original = UUID()
+        let relaunched = UUID()
         binding.update(windowIDs: [original], focusedID: original)
         XCTAssertFalse(binding.update(windowIDs: [], focusedID: original))
         XCTAssertNil(binding.windowID)

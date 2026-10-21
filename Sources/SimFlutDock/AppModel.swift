@@ -1,9 +1,9 @@
 import AppKit
-import SwiftUI
 import Combine
+import ImageIO
 import ServiceManagement
 import SimFlutDockCore
-import ImageIO
+import SwiftUI
 import UniformTypeIdentifiers
 
 @MainActor final class BackgroundLaunch: ObservableObject {
@@ -23,10 +23,12 @@ import UniformTypeIdentifiers
     func refresh() { status = service.status }
     func setEnabled(_ enabled: Bool) {
         do {
-            if enabled { try service.register() }
-            else {
+            if enabled {
+                try service.register()
+            } else {
                 try service.unregister()
-                DistributedNotificationCenter.default().postNotificationName(Notification.Name("com.fluttios.helper.quit"), object: nil, userInfo: nil, deliverImmediately: true)
+                DistributedNotificationCenter.default().postNotificationName(
+                    Notification.Name("com.fluttios.helper.quit"), object: nil, userInfo: nil, deliverImmediately: true)
             }
             error = nil
         } catch { self.error = error.localizedDescription }
@@ -50,7 +52,10 @@ import UniformTypeIdentifiers
     @Published var globalSDK: String = UserDefaults.standard.string(forKey: "globalSDK") ?? "" {
         didSet { UserDefaults.standard.set(globalSDK, forKey: "globalSDK") }
     }
-    @Published var freePanel = UserDefaults.standard.bool(forKey: "attachedPanelBehaviorV2") ? UserDefaults.standard.bool(forKey: "freePanel") : false {
+    @Published var freePanel =
+        UserDefaults.standard.bool(forKey: "attachedPanelBehaviorV2")
+        ? UserDefaults.standard.bool(forKey: "freePanel") : false
+    {
         didSet { UserDefaults.standard.set(freePanel, forKey: "freePanel") }
     }
     @Published var toggleUnboundPanelFromTray = UserDefaults.standard.bool(forKey: "toggleUnboundPanelFromTray") {
@@ -63,7 +68,9 @@ import UniformTypeIdentifiers
     @Published var panelSide = PanelSide(rawValue: UserDefaults.standard.string(forKey: "panelSide") ?? "") ?? .above {
         didSet { UserDefaults.standard.set(panelSide.rawValue, forKey: "panelSide") }
     }
-    @Published private(set) var pinnedSimulatorIDs = Set(UserDefaults.standard.stringArray(forKey: "pinnedSimulatorIDs") ?? []) {
+    @Published private(set) var pinnedSimulatorIDs = Set(
+        UserDefaults.standard.stringArray(forKey: "pinnedSimulatorIDs") ?? [])
+    {
         didSet { UserDefaults.standard.set(pinnedSimulatorIDs.sorted(), forKey: "pinnedSimulatorIDs") }
     }
     @Published private(set) var bootingSimulatorIDs: Set<String> = []
@@ -105,13 +112,19 @@ import UniformTypeIdentifiers
                     for url in ProjectIconSource.candidates(projectPath: path) {
                         // Decode only a menu-sized thumbnail, off the UI thread.
                         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-                              let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
-                                kCGImageSourceCreateThumbnailFromImageAlways: true,
-                                kCGImageSourceThumbnailMaxPixelSize: 64,
-                                kCGImageSourceCreateThumbnailWithTransform: true
-                              ] as CFDictionary) else { continue }
+                            let thumbnail = CGImageSourceCreateThumbnailAtIndex(
+                                source, 0,
+                                [
+                                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                    kCGImageSourceThumbnailMaxPixelSize: 64,
+                                    kCGImageSourceCreateThumbnailWithTransform: true,
+                                ] as CFDictionary)
+                        else { continue }
                         let data = NSMutableData()
-                        guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else { continue }
+                        guard
+                            let destination = CGImageDestinationCreateWithData(
+                                data, UTType.png.identifier as CFString, 1, nil)
+                        else { continue }
                         CGImageDestinationAddImage(destination, thumbnail, nil)
                         guard CGImageDestinationFinalize(destination) else { continue }
                         images[path] = data as Data
@@ -129,13 +142,25 @@ import UniformTypeIdentifiers
             self.loadedIconPaths.formUnion(missing)
         }
     }
-    var selectedSession: FlutterSession? { store.selectedID.flatMap { manager.sessions[$0] } }
+    func device(for project: Project) -> SimulatorDevice? {
+        guard let id = project.deviceID else { return AutomaticDeviceSelection.device(from: simulators.devices) }
+        return simulators.devices.first { $0.id == id }
+            ?? manager.sessions[SessionKey(projectID: project.id, deviceID: id)]?.device
+    }
+    func sessionKey(for project: Project) -> SessionKey? {
+        guard let deviceID = project.deviceID ?? device(for: project)?.id else { return nil }
+        return SessionKey(projectID: project.id, deviceID: deviceID)
+    }
+    func session(for project: Project) -> FlutterSession? {
+        sessionKey(for: project).flatMap { manager.sessions[$0] }
+    }
+    var selectedSessionKey: SessionKey? { store.selected.flatMap { sessionKey(for: $0) } }
+    var selectedSession: FlutterSession? { selectedSessionKey.flatMap { manager.sessions[$0] } }
     var verticalPanel: Bool { actualPanelSide?.isVertical == true }
     var panelHeight: CGFloat { verticalPanel ? 374 : horizontalPanelHeight }
     var horizontalPanelHeight: CGFloat { selectedSession?.state.isBusy == true ? 70 : 48 }
     var selectedDevice: SimulatorDevice? {
-        if let session = selectedSession, session.hasWork { return session.device }
-        return simulators.devices.first { $0.id == store.selected?.deviceID }
+        store.selected.flatMap { device(for: $0) }
     }
     var simulatorToolDevice: SimulatorDevice? {
         guard let device = selectedDevice else { return nil }
@@ -149,7 +174,8 @@ import UniformTypeIdentifiers
     var panelBindingKey: String { selectedDevice?.id ?? store.selected?.deviceID ?? "unselected" }
     var manualPanelWindowID: UUID? {
         guard tracker.trusted, let id = panelWindowBindings[panelBindingKey],
-              tracker.windows.contains(where: { $0.id == id }) else { return nil }
+            tracker.windows.contains(where: { $0.id == id })
+        else { return nil }
         return id
     }
     // Manual attachment controls panel placement, independently of the Flutter target.
@@ -162,8 +188,7 @@ import UniformTypeIdentifiers
         // Opening the picker or changing projects can overlap the startup scan.
         // Wait so the new request isn't discarded by SimulatorService's busy guard.
         while simulators.refreshing {
-            do { try await Task.sleep(for: .milliseconds(100)) }
-            catch { return }
+            do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
         }
         guard !Task.isCancelled else { return }
         await simulators.refresh(project: store.selected, globalSDK: globalSDK)
@@ -174,7 +199,8 @@ import UniformTypeIdentifiers
     }
     func bootSimulator(_ device: SimulatorDevice) {
         guard device.isIOSSimulator, device.isAvailable, device.state == "Shutdown",
-              bootingSimulatorIDs.insert(device.id).inserted else { return }
+            bootingSimulatorIDs.insert(device.id).inserted
+        else { return }
         simulatorBootError = nil
         Task {
             defer { bootingSimulatorIDs.remove(device.id) }
@@ -184,18 +210,25 @@ import UniformTypeIdentifiers
                 while simulators.refreshing { try await Task.sleep(for: .milliseconds(100)) }
                 await refreshDevices()
             } catch {
-                simulatorBootError = L10n.text("Could not start {0}: {1}", "\(device.name)", "\(error.localizedDescription)")
+                simulatorBootError = L10n.text(
+                    "Could not start {0}: {1}", "\(device.name)", "\(error.localizedDescription)")
             }
         }
     }
     func chooseDevice(_ device: SimulatorDevice?) {
-        guard var project = store.selected, !(selectedSession?.hasWork ?? false) else { return }
-        project.deviceID = device?.id; project.deviceIsPhysical = device?.isPhysical; project.devicePlatform = device?.targetPlatform
+        guard var project = store.selected else { return }
+        project.deviceID = device?.id
+        project.deviceIsPhysical = device?.isPhysical
+        project.devicePlatform = device?.targetPlatform
         if !project.launch.mode.supports(device) { project.launch.setMode(.debug) }
-        store.update(project); tracker.refresh()
+        store.update(project)
+        tracker.refresh()
+        if let key = selectedSessionKey { Task { await manager.foreground(key) } }
     }
     func chooseLaunchMode(_ mode: LaunchMode) {
-        guard var project = store.selected, !(selectedSession?.hasWork ?? false), mode.supports(selectedDevice) else { return }
+        guard var project = store.selected, !(selectedSession?.hasWork ?? false), mode.supports(selectedDevice) else {
+            return
+        }
         project.launch = project.launch.usingProjectDefaults(mode: mode)
         store.update(project)
     }
@@ -220,25 +253,33 @@ import UniformTypeIdentifiers
         }
         store.$projects.map { $0.map(\.path) }.removeDuplicates()
             .sink { [weak self] in self?.loadProjectIcons($0) }.store(in: &subscriptions)
-        for publisher in [store.objectWillChange.eraseToAnyPublisher(), simulators.objectWillChange.eraseToAnyPublisher(),
-                          tracker.objectWillChange.eraseToAnyPublisher(), manager.objectWillChange.eraseToAnyPublisher(), background.objectWillChange.eraseToAnyPublisher()] {
+        for publisher in [
+            store.objectWillChange.eraseToAnyPublisher(), simulators.objectWillChange.eraseToAnyPublisher(),
+            tracker.objectWillChange.eraseToAnyPublisher(), manager.objectWillChange.eraseToAnyPublisher(),
+            background.objectWillChange.eraseToAnyPublisher(),
+        ] {
             publisher.sink { [weak self] in self?.objectWillChange.send() }.store(in: &subscriptions)
         }
         Task { await refreshDevices() }
     }
     func select(_ project: Project) {
-        store.select(project.id); tracker.refresh()
+        store.select(project.id)
+        tracker.refresh()
         Task { await refreshDevices() }
+        let key = selectedSessionKey
         Task {
-            await manager.foreground(project.id)
-            guard store.selectedID == project.id else { return }
+            if let key { await manager.foreground(key) }
+            guard store.selectedID == project.id, selectedSessionKey == key else { return }
             let windows = tracker.matching(selectedDevice, knownDevices: simulators.devices)
             if !standalonePanel, windows.count == 1 { tracker.raise(windows[0]) }
         }
     }
     func openProject(replacing: UUID? = nil) {
-        let picker = NSOpenPanel(); picker.canChooseFiles = false; picker.canChooseDirectories = true
-        picker.prompt = L10n.text("Open Project"); picker.message = L10n.text("Select a Flutter project folder.")
+        let picker = NSOpenPanel()
+        picker.canChooseFiles = false
+        picker.canChooseDirectories = true
+        picker.prompt = L10n.text("Open Project")
+        picker.message = L10n.text("Select a Flutter project folder.")
         picker.begin { [weak self] response in
             guard response == .OK, let url = picker.url else { return }
             MainActor.assumeIsolated {
@@ -250,8 +291,13 @@ import UniformTypeIdentifiers
         }
     }
     func chooseSDK(_ completion: @escaping (String) -> Void) {
-        let picker = NSOpenPanel(); picker.canChooseFiles = false; picker.canChooseDirectories = true; picker.showsHiddenFiles = true
-        picker.message = L10n.text("Select the Flutter SDK (the folder containing bin/flutter). For FVM, select .fvm/flutter_sdk or a specific version folder.")
+        let picker = NSOpenPanel()
+        picker.canChooseFiles = false
+        picker.canChooseDirectories = true
+        picker.showsHiddenFiles = true
+        picker.message = L10n.text(
+            "Select the Flutter SDK (the folder containing bin/flutter). For FVM, select .fvm/flutter_sdk or a specific version folder."
+        )
         picker.begin { response in
             if response == .OK, let url = picker.url { MainActor.assumeIsolated { completion(url.path) } }
         }
@@ -261,21 +307,40 @@ import UniformTypeIdentifiers
             message = L10n.text("Wait for the simulator action to finish before pressing Run.")
             return
         }
-        guard var project = store.selected else { openProject(); return }
-        if let id = project.deviceID, !simulators.devices.contains(where: { $0.id == id }) {
-            message = L10n.text("The saved device is unavailable. Refresh the list and select a device in the panel. For iPhone / iPad, check the connection, trust this Mac, and enable Developer Mode."); return
+        guard var project = store.selected else {
+            openProject()
+            return
         }
-        let device = simulators.devices.first { $0.id == project.deviceID } ?? AutomaticDeviceSelection.device(from: simulators.devices)
-        guard let device else { message = L10n.text("Select a connected iPhone / iPad, or install an iOS Simulator in Xcode and refresh the device list in the panel."); return }
+        if let id = project.deviceID, !simulators.devices.contains(where: { $0.id == id }) {
+            message = L10n.text(
+                "The saved device is unavailable. Refresh the list and select a device in the panel. For iPhone / iPad, check the connection, trust this Mac, and enable Developer Mode."
+            )
+            return
+        }
+        let device =
+            simulators.devices.first { $0.id == project.deviceID }
+            ?? AutomaticDeviceSelection.device(from: simulators.devices)
+        guard let device else {
+            message = L10n.text(
+                "Select a connected iPhone / iPad, or install an iOS Simulator in Xcode and refresh the device list in the panel."
+            )
+            return
+        }
+        // Keep an automatic launch selected even if device discovery changes order.
+        project.deviceID = device.id
+        project.deviceIsPhysical = device.isPhysical
+        project.devicePlatform = device.targetPlatform
         project.launch = project.launch.usingProjectDefaults()
         store.update(project)
         manager.run(project: project, device: device, globalSDK: globalSDK)
     }
     func restart(full: Bool) {
-        guard let id = store.selectedID, !manager.foregroundIDs.contains(id) else { return }
+        guard let key = selectedSessionKey, let session = selectedSession,
+            !manager.foregroundIDs.contains(key)
+        else { return }
         Task {
-            await manager.foreground(id)
-            manager.sessions[id]?.restart(full: full)
+            await manager.foreground(key)
+            session.restart(full: full)
         }
     }
     func openProjectFolder(_ project: Project) {
@@ -290,23 +355,26 @@ import UniformTypeIdentifiers
         !store.projects.isEmpty && !manager.hasActiveSessions && !simulatorToolBusy && !manager.shuttingDown
     }
     func removeSavedProject(_ projectID: UUID) {
-        guard manager.sessions[projectID]?.hasWork != true, !simulatorToolBusy, !manager.shuttingDown else { return }
+        guard !manager.hasActiveSessions(for: projectID), !simulatorToolBusy, !manager.shuttingDown else { return }
         store.remove(projectID)
+        manager.removeInactiveSessions(for: projectID)
     }
     func clearSavedProjects() {
         guard canClearSavedProjects else { return }
         store.clearSavedProjects()
+        for id in Array(manager.sessions.keys) { manager.removeInactiveSession(id) }
     }
     func openProjectDataFolder(_ projectID: UUID) { projectAction(.dataFolder, projectID: projectID) }
     func resetProjectPermissions(_ projectID: UUID) { projectAction(.resetPermissions, projectID: projectID) }
     private func projectAction(_ action: ProjectAction, projectID: UUID) {
         guard !simulatorToolBusy, let project = store.projects.first(where: { $0.id == projectID }) else { return }
-        let session = manager.sessions[project.id]
+        let session = session(for: project)
         let active = session?.hasWork == true
-        let deviceID = active ? session?.device?.id : project.deviceID
+        let deviceID = device(for: project)?.id
         let launchProject = active ? session?.launchProject ?? project : project
         let knownBundle = active ? session?.bundleID : nil
-        simulatorToolProjectID = project.id; simulatorToolResult = nil
+        simulatorToolProjectID = project.id
+        simulatorToolResult = nil
         guard let deviceID else {
             simulatorToolResult = L10n.text("Select an iOS Simulator for this project in settings.")
             return
@@ -325,19 +393,26 @@ import UniformTypeIdentifiers
             do {
                 let device = try await simulators.currentSimulator(id: deviceID)
                 let bundle: String
-                if let knownBundle { bundle = knownBundle }
-                else { bundle = try await simulators.bundleIdentifier(launchProject, device: device) }
+                if let knownBundle {
+                    bundle = knownBundle
+                } else {
+                    bundle = try await simulators.bundleIdentifier(launchProject, device: device)
+                }
                 switch action {
                 case .dataFolder:
                     let url = try await simulators.dataContainer(bundleID: bundle, device: device)
-                    _ = try await NSWorkspace.shared.open([url],
+                    _ = try await NSWorkspace.shared.open(
+                        [url],
                         withApplicationAt: URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"),
                         configuration: NSWorkspace.OpenConfiguration())
                     simulatorToolResult = L10n.text("Data folder opened in Finder.")
                 case .resetPermissions:
-                    guard manager.sessions[project.id]?.hasWork != true,
-                          manager.conflictingProject(bundleID: bundle, deviceID: device.id, excluding: project.id) == nil else {
-                        throw SimFlutDockError.message(L10n.text("Press Stop for the app on this simulator before resetting permissions."))
+                    let key = SessionKey(projectID: project.id, deviceID: device.id)
+                    guard manager.sessions[key]?.hasWork != true,
+                        manager.conflictingProject(bundleID: bundle, deviceID: device.id, excluding: project.id) == nil
+                    else {
+                        throw SimFlutDockError.message(
+                            L10n.text("Press Stop for the app on this simulator before resetting permissions."))
                     }
                     try await simulators.resetPermissions(bundleID: bundle, device: device)
                     simulatorToolResult = L10n.text("Permissions reset. The app will request access again when needed.")
@@ -348,7 +423,8 @@ import UniformTypeIdentifiers
     enum SimulatorAction { case link(String) }
     func simulatorAction(_ action: SimulatorAction) {
         guard !simulatorToolBusy, let project = store.selected else { return }
-        simulatorToolProjectID = project.id; simulatorToolResult = nil
+        simulatorToolProjectID = project.id
+        simulatorToolResult = nil
         guard let device = simulatorToolDevice, device.isIOSSimulator, device.state == "Booted" else {
             simulatorToolResult = L10n.text("Select a running iOS Simulator in project settings.")
             return
@@ -367,11 +443,13 @@ import UniformTypeIdentifiers
         }
     }
     func checkTools() {
-        guard !checkingTools else { return }; checkingTools = true
+        guard !checkingTools else { return }
+        checkingTools = true
         Task {
             defer { checkingTools = false }
             do {
-                let project = store.selected ?? Project(name: "SDK", path: FileManager.default.homeDirectoryForCurrentUser.path)
+                let project =
+                    store.selected ?? Project(name: "SDK", path: FileManager.default.homeDirectoryForCurrentUser.path)
                 let sdk = try FlutterSDKResolver.resolve(project: project, global: globalSDK)
                 let result = try await FlutterSDKResolver.check(sdk)
                 message = L10n.text("Flutter and Xcode are available.\n{0}\n{1}", "\(sdk)", "\(result)")

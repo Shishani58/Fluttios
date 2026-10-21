@@ -8,7 +8,11 @@ Please do not post credentials, project logs, private application screenshots or
 
 SimFlutDock stores project paths, device selections and saved deep links in `~/Library/Application Support/Fluttios/projects.json`; UI preferences are stored in macOS UserDefaults. Session logs live in memory and can contain output from your application. The app contains no telemetry or analytics uploader. Flutter, Xcode, your project and Apple's notarization service can make their own network requests.
 
+Update checks contact this repository's public GitHub Releases and download release metadata, checksums, and installers. Automatic checks can be disabled in Settings. The updater does not upload project paths, source code, or session logs.
+
 SimFlutDock хранит пути проектов, выбранные устройства и ссылки в `~/Library/Application Support/Fluttios/projects.json`; настройки интерфейса — в UserDefaults macOS. Логи сессий хранятся в памяти и могут содержать вывод вашего приложения. В SimFlutDock нет отправки телеметрии или аналитики. Flutter, Xcode, ваш проект и сервис notarization Apple могут выполнять собственные сетевые запросы.
+
+Проверка обновлений обращается к публичным GitHub Releases этого репозитория и скачивает метаданные, контрольные суммы и установщики. Автоматическую проверку можно отключить в настройках. Обновление не отправляет пути проектов, исходный код или логи сессий.
 
 This developer utility is not sandboxed. It executes Flutter/Xcode tools and uses Accessibility for simulator window attachment. Undocumented window notification symbols have a public Accessibility fallback. Review any Flutter project before running it.
 

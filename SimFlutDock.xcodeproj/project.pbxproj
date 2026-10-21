@@ -1,5 +1,15 @@
 // !$*UTF8*$!
 {archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+AA000000000000000000000A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/ViewSupport.swift"; sourceTree = "<group>";};
+AA000000000000000000000B = {isa = PBXBuildFile; fileRef = AA000000000000000000000A;};
+AA000000000000000000001A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/ProjectMenu.swift"; sourceTree = "<group>";};
+AA000000000000000000001B = {isa = PBXBuildFile; fileRef = AA000000000000000000001A;};
+AA000000000000000000002A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/DeviceMenu.swift"; sourceTree = "<group>";};
+AA000000000000000000002B = {isa = PBXBuildFile; fileRef = AA000000000000000000002A;};
+AA000000000000000000004A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/SettingsView.swift"; sourceTree = "<group>";};
+AA000000000000000000004B = {isa = PBXBuildFile; fileRef = AA000000000000000000004A;};
+AA000000000000000000005A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/LogsView.swift"; sourceTree = "<group>";};
+AA000000000000000000005B = {isa = PBXBuildFile; fileRef = AA000000000000000000005A;};
 A112345678901234567890AAA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/AppUpdater.swift"; sourceTree = "<group>";};
 A112345678901234567890BBB = {isa = PBXBuildFile; fileRef = A112345678901234567890AAA;};
 A012345678901234567890AAA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDockCore/AppUpdateService.swift"; sourceTree = "<group>";};
@@ -55,12 +65,12 @@ ED840C3C9BCE9A53595A4DA1 = {isa = PBXFileReference; lastKnownFileType = sourceco
 EC1BA1F08BE0A06EAEA5CFBA = {isa = PBXBuildFile; fileRef = ED840C3C9BCE9A53595A4DA1;};
 AFD41FF5ACC04480AD51FB38 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/SimulatorWindowTracker.swift"; sourceTree = "<group>";};
 5B3D4BB9F217D74492DD942F = {isa = PBXBuildFile; fileRef = AFD41FF5ACC04480AD51FB38;};
-8BAE192D55FE5ABFD9F4E9D8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/Views.swift"; sourceTree = "<group>";};
+8BAE192D55FE5ABFD9F4E9D8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/PanelView.swift"; sourceTree = "<group>";};
 24FA4F919C184FC7F2B72D2C = {isa = PBXBuildFile; fileRef = 8BAE192D55FE5ABFD9F4E9D8;};
 2762D84BC2C6FD2A687C9CAF = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SimFlutDock/main.swift"; sourceTree = "<group>";};
 CEC10EC2BC3B6F57D66C0A00 = {isa = PBXBuildFile; fileRef = 2762D84BC2C6FD2A687C9CAF;};
-FDEC88052E66357121E09C93 = {isa = PBXGroup; name = SimFlutDock; children = (A112345678901234567890AAA,F12345678901234567890123A,7A11D03B56B919B5E946E1B7,ED840C3C9BCE9A53595A4DA1,AFD41FF5ACC04480AD51FB38,8BAE192D55FE5ABFD9F4E9D8,2762D84BC2C6FD2A687C9CAF,); sourceTree = "<group>";};
-4C3AAD871A7C1CB7EC1AC63C = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A112345678901234567890BBB,F12345678901234567890123B,91A95EBFCA8F155D7B3FED07,EC1BA1F08BE0A06EAEA5CFBA,5B3D4BB9F217D74492DD942F,24FA4F919C184FC7F2B72D2C,CEC10EC2BC3B6F57D66C0A00,); runOnlyForDeploymentPostprocessing = 0;};
+FDEC88052E66357121E09C93 = {isa = PBXGroup; name = SimFlutDock; children = (AA000000000000000000000A,AA000000000000000000001A,AA000000000000000000002A,AA000000000000000000004A,AA000000000000000000005A,A112345678901234567890AAA,F12345678901234567890123A,7A11D03B56B919B5E946E1B7,ED840C3C9BCE9A53595A4DA1,AFD41FF5ACC04480AD51FB38,8BAE192D55FE5ABFD9F4E9D8,2762D84BC2C6FD2A687C9CAF,); sourceTree = "<group>";};
+4C3AAD871A7C1CB7EC1AC63C = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA000000000000000000000B,AA000000000000000000001B,AA000000000000000000002B,AA000000000000000000004B,AA000000000000000000005B,A112345678901234567890BBB,F12345678901234567890123B,91A95EBFCA8F155D7B3FED07,EC1BA1F08BE0A06EAEA5CFBA,5B3D4BB9F217D74492DD942F,24FA4F919C184FC7F2B72D2C,CEC10EC2BC3B6F57D66C0A00,); runOnlyForDeploymentPostprocessing = 0;};
 78E24EB51B68061AC4D28728 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimFlutDock.app; sourceTree = BUILT_PRODUCTS_DIR;};
 B8D1CE7D275DBDD4DCCB362D = {isa = PBXContainerItemProxy; containerPortal = 98F54143AB4E86B28C3AFEE0; proxyType = 1; remoteGlobalIDString = 029AEA296101AAF020D8B192; remoteInfo = SimFlutDockCore;};
 9CCAC861DFEEB91FD131C000 = {isa = PBXTargetDependency; target = 029AEA296101AAF020D8B192; targetProxy = B8D1CE7D275DBDD4DCCB362D;};

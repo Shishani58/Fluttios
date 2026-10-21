@@ -1,0 +1,28 @@
+name: macOS checks
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Validate metadata, build, and test
+        run: ./scripts/check.sh
+      - name: Build Xcode project
+        run: >-
+          xcodebuild -project SimFlutDock.xcodeproj -scheme SimFlutDock
+          -configuration Debug -derivedDataPath .build/xcode-ci
+          CODE_SIGNING_ALLOWED=NO build

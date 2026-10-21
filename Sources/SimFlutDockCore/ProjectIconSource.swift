@@ -6,7 +6,7 @@ public enum ProjectIconSource {
         let root = URL(fileURLWithPath: projectPath, isDirectory: true)
         let catalogs = [
             "ios/Runner/Assets.xcassets/AppIcon.appiconset",
-            "macos/Runner/Assets.xcassets/AppIcon.appiconset"
+            "macos/Runner/Assets.xcassets/AppIcon.appiconset",
         ]
         var result = catalogs.flatMap { catalogIcons(at: root.appendingPathComponent($0)) }
         result += ["xxxhdpi", "xxhdpi", "xhdpi", "hdpi", "mdpi"].map {
@@ -34,13 +34,15 @@ public enum ProjectIconSource {
             let images: [Icon]
         }
         guard let data = try? Data(contentsOf: directory.appendingPathComponent("Contents.json")),
-              let catalog = try? JSONDecoder().decode(Catalog.self, from: data) else { return [] }
+            let catalog = try? JSONDecoder().decode(Catalog.self, from: data)
+        else { return [] }
         return catalog.images.filter { $0.appearances?.isEmpty != false }
             .sorted { $0.pixelSize > $1.pixelSize }
             .compactMap { icon in
                 guard let filename = icon.filename, !filename.isEmpty,
-                      filename == (filename as NSString).lastPathComponent,
-                      filename != ".", filename != ".." else { return nil }
+                    filename == (filename as NSString).lastPathComponent,
+                    filename != ".", filename != ".."
+                else { return nil }
                 return directory.appendingPathComponent(filename)
             }
     }

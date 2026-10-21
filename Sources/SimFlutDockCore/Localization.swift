@@ -2,7 +2,9 @@ import Foundation
 
 /// Persisted UI preference. Automatic follows the first system language, with English as fallback.
 public enum AppLanguage: String, CaseIterable, Identifiable {
-    case automatic, english = "en", russian = "ru"
+    case automatic
+    case english = "en"
+    case russian = "ru"
     public var id: Self { self }
     public var title: String {
         switch self {
@@ -49,7 +51,8 @@ public enum L10n {
         let pieces = template.components(separatedBy: "{")
         return pieces.dropFirst().reduce(pieces[0]) { result, piece in
             guard let close = piece.firstIndex(of: "}"),
-                  let index = Int(piece[..<close]), arguments.indices.contains(index) else {
+                let index = Int(piece[..<close]), arguments.indices.contains(index)
+            else {
                 return result + "{" + piece
             }
             return result + arguments[index] + piece[piece.index(after: close)...]
@@ -75,7 +78,8 @@ public enum L10n {
         func pattern(_ template: String) -> NSRegularExpression {
             let tokens = try! NSRegularExpression(pattern: #"\{[0-9]+\}"#)
             let range = NSRange(template.startIndex..., in: template)
-            var pattern = "^", end = template.startIndex
+            var pattern = "^"
+            var end = template.startIndex
             for match in tokens.matches(in: template, range: range) {
                 let token = Range(match.range, in: template)!
                 pattern += NSRegularExpression.escapedPattern(for: String(template[end..<token.lowerBound])) + "(.*?)"
@@ -89,72 +93,115 @@ public enum L10n {
         }
     }()
     static let russian: [String: String] = [
+        "Checks at launch, at most once a day. A manual check also downloads the update.":
+            "Проверка при запуске, не чаще раза в сутки. При ручной проверке обновление также скачивается.",
+        "The update will be downloaded and prepared automatically. You choose when to quit and install it.":
+            "Обновление скачается и подготовится автоматически. Вы сами выбираете, когда закрыть приложение и установить его.",
+        "Downloading, verifying, and preparing the update…": "Скачивание, проверка и подготовка обновления…",
+        "The update is ready to install.": "Обновление готово к установке.",
+        "SimFlutDock will quit, replace the current version, and reopen automatically. Running Flutter sessions will be stopped with your confirmation.":
+            "SimFlutDock закроется, заменит текущую версию и автоматически запустится снова. Работающие сессии Flutter будут остановлены с вашего подтверждения.",
+        "Quit and Install": "Закрыть и установить",
+        "Install Update…": "Установить обновление…",
+        "Move SimFlutDock to a writable Applications folder, then try updating again.":
+            "Переместите SimFlutDock в доступную для записи папку «Программы» и повторите обновление.",
+        "Could not prepare the update for automatic installation. Check available disk space and folder permissions, then try again.":
+            "Не удалось подготовить автоматическую установку. Проверьте свободное место и права доступа к папке и попробуйте снова.",
+        "The update could not be installed. Your previous version has been preserved. Please try again from Settings.":
+            "Не удалось установить обновление. Предыдущая версия сохранена. Повторите попытку из настроек.",
         "App Updates": "Обновления приложения",
         "Check for Updates…": "Проверить обновления…",
         "Automatically check for updates": "Автоматически проверять обновления",
-        "Checks at launch, at most once a day. Downloads only with your permission.": "Проверка при запуске, не чаще раза в сутки. Скачивание — только с вашего согласия.",
+        "Checks at launch, at most once a day. Downloads only with your permission.":
+            "Проверка при запуске, не чаще раза в сутки. Скачивание — только с вашего согласия.",
         "Check for a newer version of SimFlutDock.": "Проверьте наличие новой версии SimFlutDock.",
         "Checking for updates…": "Проверка обновлений…",
         "SimFlutDock {0} is up to date.": "Установлена актуальная версия SimFlutDock {0}.",
         "SimFlutDock {0} is available. Installed: {1}.": "Доступна версия SimFlutDock {0}. Установлена: {1}.",
         "Download size: {0}": "Размер загрузки: {0}",
-        "The DMG will open after verification. Quit SimFlutDock, then drag the app to Applications and confirm replacement.": "После проверки откроется DMG. Завершите SimFlutDock, затем перетащите приложение в «Программы» и подтвердите замену.",
+        "The DMG will open after verification. Quit SimFlutDock, then drag the app to Applications and confirm replacement.":
+            "После проверки откроется DMG. Завершите SimFlutDock, затем перетащите приложение в «Программы» и подтвердите замену.",
         "Download Update": "Скачать обновление",
         "Downloading and verifying the installer…": "Скачивание и проверка установщика…",
         "Cancel Download": "Отменить скачивание",
         "The installer is ready.": "Установщик готов.",
-        "Quit SimFlutDock, drag the app from the DMG to Applications, confirm replacement, then launch it from Applications. Running Flutter sessions will be stopped when you quit.": "Завершите SimFlutDock, перетащите приложение из DMG в «Программы», подтвердите замену и запустите его из «Программ». При выходе работающие сессии Flutter будут остановлены.",
+        "Quit SimFlutDock, drag the app from the DMG to Applications, confirm replacement, then launch it from Applications. Running Flutter sessions will be stopped when you quit.":
+            "Завершите SimFlutDock, перетащите приложение из DMG в «Программы», подтвердите замену и запустите его из «Программ». При выходе работающие сессии Flutter будут остановлены.",
         "Open Installer": "Открыть установщик",
         "Quit to Install": "Выйти для установки",
         "Could not update SimFlutDock": "Не удалось обновить SimFlutDock",
-        "Could not determine the installed version. Open the built SimFlutDock.app.": "Не удалось определить установленную версию. Откройте собранное приложение SimFlutDock.app.",
-        "The release does not contain a compatible installer and checksum. Try again later.": "В релизе нет подходящего установщика или контрольной суммы. Попробуйте позже.",
+        "Could not determine the installed version. Open the built SimFlutDock.app.":
+            "Не удалось определить установленную версию. Откройте собранное приложение SimFlutDock.app.",
+        "The release does not contain a compatible installer and checksum. Try again later.":
+            "В релизе нет подходящего установщика или контрольной суммы. Попробуйте позже.",
         "The update server returned HTTP {0}. Try again later.": "Сервер обновлений вернул HTTP {0}. Попробуйте позже.",
-        "The installer checksum is missing or invalid. Try again later.": "Контрольная сумма установщика отсутствует или неверна. Попробуйте позже.",
-        "The downloaded installer failed verification. Please download it again.": "Скачанный установщик не прошёл проверку. Скачайте его ещё раз.",
+        "The installer checksum is missing or invalid. Try again later.":
+            "Контрольная сумма установщика отсутствует или неверна. Попробуйте позже.",
+        "The downloaded installer failed verification. Please download it again.":
+            "Скачанный установщик не прошёл проверку. Скачайте его ещё раз.",
         "Clear Saved Projects…": "Очистить сохранённые проекты…",
         "Clear Saved Projects": "Очистить сохранённые проекты",
-        "Clear all saved projects? Project files and app data will remain on disk.": "Очистить все сохранённые проекты? Файлы проектов и данные приложений останутся на диске.",
-        "Stop running sessions before clearing saved projects.": "Остановите работающие сессии перед очисткой сохранённых проектов.",
+        "Clear all saved projects? Project files and app data will remain on disk.":
+            "Очистить все сохранённые проекты? Файлы проектов и данные приложений останутся на диске.",
+        "Stop running sessions before clearing saved projects.":
+            "Остановите работающие сессии перед очисткой сохранённых проектов.",
         "Remove saved project {0}": "Убрать сохранённый проект {0}",
         "Change location for {0}": "Изменить расположение проекта {0}",
         "Checking project": "Проверка проекта",
         "Building in Xcode": "Сборка в Xcode",
         "Installing and launching": "Установка и запуск",
         "Building and launching app": "Сборка и запуск приложения",
-        "Flutter did not finish launching within 10 minutes. Stop the session and check the logs.": "Flutter не завершил запуск за 10 минут. Остановите сессию и проверьте логи.",
-        "Lost connection to Dart VM: {0}. Use Stop and Run.": "Соединение с Dart VM потеряно: {0}. Выполните Stop и Run.",
-        "Could not connect the Dart console: {0}. Use Stop and Run.": "Не удалось подключить консоль Dart: {0}. Выполните Stop и Run.",
+        "Flutter did not finish launching within 10 minutes. Stop the session and check the logs.":
+            "Flutter не завершил запуск за 10 минут. Остановите сессию и проверьте логи.",
+        "Lost connection to Dart VM: {0}. Use Stop and Run.":
+            "Соединение с Dart VM потеряно: {0}. Выполните Stop и Run.",
+        "Could not connect the Dart console: {0}. Use Stop and Run.":
+            "Не удалось подключить консоль Dart: {0}. Выполните Stop и Run.",
         "Connecting Dart console": "Подключение консоли Dart",
-        "The app disconnected. Stop the remaining process or use Run after it exits.": "Приложение отключилось. Остановите оставшийся процесс или повторите Run после его завершения.",
+        "The app disconnected. Stop the remaining process or use Run after it exits.":
+            "Приложение отключилось. Остановите оставшийся процесс или повторите Run после его завершения.",
         "Flutter could not update the app.": "Flutter не смог обновить приложение.",
         "Hot restart completed.": "Hot restart завершён.",
         "Hot reload completed.": "Hot reload завершён.",
         "Stopping app": "Остановка приложения",
-        "Flutter did not exit normally; terminating the process owned by this session.": "Flutter не завершился штатно; завершаем принадлежащий сессии процесс.",
-        "Flutter exited (code {0}). Check the logs and press Run.": "Flutter завершился (код {0}). Проверьте логи и нажмите Run.",
+        "Flutter did not exit normally; terminating the process owned by this session.":
+            "Flutter не завершился штатно; завершаем принадлежащий сессии процесс.",
+        "Flutter exited (code {0}). Check the logs and press Run.":
+            "Flutter завершился (код {0}). Проверьте логи и нажмите Run.",
         "Process exited: {0}.": "Процесс завершён: {0}.",
         "Tool exited with code {0}.": "Инструмент завершился с кодом {0}.",
-        "Flutter SDK not found. Select the SDK folder in settings. For FVM, select the project's .fvm/flutter_sdk or an installed SDK version.": "Flutter SDK не найден. Выберите папку SDK в настройках. Для FVM выберите .fvm/flutter_sdk проекта или установленную версию SDK.",
-        "Full Xcode installation not found. Install and open Xcode, accept the license, and install an iOS Simulator runtime.": "Полный Xcode не найден. Установите Xcode, откройте его, примите лицензию и установите iOS Simulator runtime.",
-        "Simulator / Device Hub not found in the selected Xcode.": "Simulator / Device Hub не найден в выбранном Xcode.",
-        "Select a running iOS Simulator in project settings.": "Выберите запущенный iOS Simulator в настройках проекта.",
+        "Flutter SDK not found. Select the SDK folder in settings. For FVM, select the project's .fvm/flutter_sdk or an installed SDK version.":
+            "Flutter SDK не найден. Выберите папку SDK в настройках. Для FVM выберите .fvm/flutter_sdk проекта или установленную версию SDK.",
+        "Full Xcode installation not found. Install and open Xcode, accept the license, and install an iOS Simulator runtime.":
+            "Полный Xcode не найден. Установите Xcode, откройте его, примите лицензию и установите iOS Simulator runtime.",
+        "Simulator / Device Hub not found in the selected Xcode.":
+            "Simulator / Device Hub не найден в выбранном Xcode.",
+        "Select a running iOS Simulator in project settings.":
+            "Выберите запущенный iOS Simulator в настройках проекта.",
         "Could not determine the app's bundle identifier.": "Не удалось определить bundle identifier приложения.",
         "Unknown simulator action.": "Неизвестное действие симулятора.",
         "Simulators: ": "Симуляторы: ",
         "Devices": "Устройства",
         "Flutter devices: ": "Устройства Flutter: ",
         "Install the full version of Xcode.": "Установите полный Xcode.",
-        "The project's simulator is unavailable. Select an iOS Simulator in project settings.": "Симулятор проекта недоступен. Выберите iOS Simulator в настройках проекта.",
-        "Data folder unavailable. Install the app on the selected simulator using Run.": "Папка данных недоступна. Установите приложение на выбранный симулятор через Run.",
+        "The project's simulator is unavailable. Select an iOS Simulator in project settings.":
+            "Симулятор проекта недоступен. Выберите iOS Simulator в настройках проекта.",
+        "Data folder unavailable. Install the app on the selected simulator using Run.":
+            "Папка данных недоступна. Установите приложение на выбранный симулятор через Run.",
         "Xcode did not return project settings.": "Xcode не вернул настройки проекта.",
-        "Could not determine a unique bundle identifier. Check the scheme and Xcode configuration in project settings.": "Не удалось однозначно определить bundle identifier. Проверьте схему и конфигурацию Xcode в настройках проекта.",
-        "Could not read the project list: {0}. File preserved: {1}": "Не удалось прочитать список проектов: {0}. Файл сохранён: {1}",
+        "Could not determine a unique bundle identifier. Check the scheme and Xcode configuration in project settings.":
+            "Не удалось однозначно определить bundle identifier. Проверьте схему и конфигурацию Xcode в настройках проекта.",
+        "Could not read the project list: {0}. File preserved: {1}":
+            "Не удалось прочитать список проектов: {0}. Файл сохранён: {1}",
         "Select a Flutter project containing pubspec.yaml.": "Выберите Flutter-проект с pubspec.yaml.",
-        "Specify an entrypoint, scheme, and {0} or {1}-flavor configuration.": "Укажите entrypoint, схему и конфигурацию {0} или {1}-flavor.",
-        "{0} is unavailable on this simulator. Choose Debug or a physical device.": "{0} недоступен на этом симуляторе. Выберите Debug или физическое устройство.",
-        "The app sets the launch mode, device, entrypoint, and flavor. Remove conflicting arguments.": "Режим запуска, устройство, entrypoint и flavor задаются приложением. Удалите конфликтующие аргументы.",
-        "Enter a complete URL with a scheme, such as myapp://profile or https://example.com/profile.": "Укажите полную ссылку со схемой, например myapp://profile или https://example.com/profile.",
+        "Specify an entrypoint, scheme, and {0} or {1}-flavor configuration.":
+            "Укажите entrypoint, схему и конфигурацию {0} или {1}-flavor.",
+        "{0} is unavailable on this simulator. Choose Debug or a physical device.":
+            "{0} недоступен на этом симуляторе. Выберите Debug или физическое устройство.",
+        "The app sets the launch mode, device, entrypoint, and flavor. Remove conflicting arguments.":
+            "Режим запуска, устройство, entrypoint и flavor задаются приложением. Удалите конфликтующие аргументы.",
+        "Enter a complete URL with a scheme, such as myapp://profile or https://example.com/profile.":
+            "Укажите полную ссылку со схемой, например myapp://profile или https://example.com/profile.",
         "Running": "Запущено",
         "Available": "Доступно",
         "Ready": "Готово",
@@ -164,9 +211,12 @@ public enum L10n {
         "Error": "Ошибка",
         "Disconnected": "Потеря соединения",
         "Timed out: {0}. See the logs for details.": "Истекло время ожидания: {0}. Подробности в логах.",
-        "The Flutter process exited. Press Run to start again.": "Процесс Flutter завершился. Нажмите Run для нового запуска.",
+        "The Flutter process exited. Press Run to start again.":
+            "Процесс Flutter завершился. Нажмите Run для нового запуска.",
         "Below": "Снизу",
         "Above": "Сверху",
+        "Expanded": "Развёрнуто",
+        "Collapsed": "Свёрнуто",
         "Left": "Слева",
         "Right": "Справа",
         "Flutter returned an unsupported Dart VM address.": "Flutter вернул неподдерживаемый адрес Dart VM.",
@@ -176,38 +226,54 @@ public enum L10n {
         "Reading Xcode settings": "Чтение настроек Xcode",
         "Preparing project": "Подготовка проекта",
         "another project": "другой проект",
-        "{0} is already using {1} on {2}. Select another device in the panel.": "{0} уже использует {1} на {2}. Выберите другое устройство на панели.",
+        "{0} is already using {1} on {2}. Select another device in the panel.":
+            "{0} уже использует {1} на {2}. Выберите другое устройство на панели.",
         "Preparing device launch": "Подготовка запуска на устройстве",
         "Could not bring the app to the foreground: {0}": "Не удалось вывести приложение на передний план: {0}",
         "Helper enabled": "Помощник включён",
-        "Allow the helper in System Settings → General → Login Items": "Разрешите помощник в Настройках системы → Основные → Объекты входа",
-        "Helper not found. Open the built SimFlutDock.app from /Applications.": "Помощник не найден. Запустите собранный SimFlutDock.app из /Applications.",
+        "Allow the helper in System Settings → General → Login Items":
+            "Разрешите помощник в Настройках системы → Основные → Объекты входа",
+        "Helper not found. Open the built SimFlutDock.app from /Applications.":
+            "Помощник не найден. Запустите собранный SimFlutDock.app из /Applications.",
         "Automatic launch disabled": "Автоматический запуск выключен",
         "Could not start {0}: {1}": "Не удалось запустить {0}: {1}",
         "Open Project": "Открыть проект",
         "Select a Flutter project folder.": "Выберите папку Flutter-проекта.",
-        "Select the Flutter SDK (the folder containing bin/flutter). For FVM, select .fvm/flutter_sdk or a specific version folder.": "Выберите Flutter SDK (папка с bin/flutter). Для FVM: .fvm/flutter_sdk или папку конкретной версии.",
-        "Wait for the simulator action to finish before pressing Run.": "Дождитесь завершения действия симулятора перед Run.",
-        "The saved device is unavailable. Refresh the list and select a device in the panel. For iPhone / iPad, check the connection, trust this Mac, and enable Developer Mode.": "Сохранённое устройство недоступно. Обновите список и выберите устройство на панели. Для iPhone / iPad проверьте подключение, доверие к Mac и режим разработчика.",
-        "Select a connected iPhone / iPad, or install an iOS Simulator in Xcode and refresh the device list in the panel.": "Выберите подключённый iPhone / iPad или установите iOS Simulator в Xcode и обновите список устройств на панели.",
-        "Could not open the project folder. Check its location in settings.": "Не удалось открыть папку проекта. Проверьте его расположение в настройках.",
-        "Select an iOS Simulator for this project in settings.": "Выберите iOS Simulator для этого проекта в настройках.",
-        "Press Stop for this app before resetting permissions.": "Нажмите Stop для этого приложения перед сбросом разрешений.",
-        "Wait for the Flutter operation to finish, then try again.": "Дождитесь завершения операции Flutter и повторите действие.",
+        "Select the Flutter SDK (the folder containing bin/flutter). For FVM, select .fvm/flutter_sdk or a specific version folder.":
+            "Выберите Flutter SDK (папка с bin/flutter). Для FVM: .fvm/flutter_sdk или папку конкретной версии.",
+        "Wait for the simulator action to finish before pressing Run.":
+            "Дождитесь завершения действия симулятора перед Run.",
+        "The saved device is unavailable. Refresh the list and select a device in the panel. For iPhone / iPad, check the connection, trust this Mac, and enable Developer Mode.":
+            "Сохранённое устройство недоступно. Обновите список и выберите устройство на панели. Для iPhone / iPad проверьте подключение, доверие к Mac и режим разработчика.",
+        "Select a connected iPhone / iPad, or install an iOS Simulator in Xcode and refresh the device list in the panel.":
+            "Выберите подключённый iPhone / iPad или установите iOS Simulator в Xcode и обновите список устройств на панели.",
+        "Could not open the project folder. Check its location in settings.":
+            "Не удалось открыть папку проекта. Проверьте его расположение в настройках.",
+        "Select an iOS Simulator for this project in settings.":
+            "Выберите iOS Simulator для этого проекта в настройках.",
+        "Press Stop for this app before resetting permissions.":
+            "Нажмите Stop для этого приложения перед сбросом разрешений.",
+        "Wait for the Flutter operation to finish, then try again.":
+            "Дождитесь завершения операции Flutter и повторите действие.",
         "Data folder opened in Finder.": "Папка данных открыта в Finder.",
-        "Press Stop for the app on this simulator before resetting permissions.": "Нажмите Stop для приложения на этом симуляторе перед сбросом разрешений.",
-        "Permissions reset. The app will request access again when needed.": "Разрешения сброшены. Приложение снова запросит доступ при следующем обращении.",
+        "Press Stop for the app on this simulator before resetting permissions.":
+            "Нажмите Stop для приложения на этом симуляторе перед сбросом разрешений.",
+        "Permissions reset. The app will request access again when needed.":
+            "Разрешения сброшены. Приложение снова запросит доступ при следующем обращении.",
         "Link opened on {0}.": "Ссылка открыта на {0}.",
         "Flutter and Xcode are available.\n{0}\n{1}": "Flutter и Xcode доступны.\n{0}\n{1}",
         "Device • detached from Simulator": "Устройство • без привязки к Simulator",
         "Free Position": "Свободное положение",
         "Select a Simulator window in the settings menu": "Выберите окно Simulator в меню настроек",
-        "macOS has not granted Accessibility access to this copy of SimFlutDock": "macOS не подтверждает Accessibility для этой копии SimFlutDock",
-        "Device window not found • select a window in the settings menu": "Окно устройства не найдено • выберите окно в меню настроек",
+        "macOS has not granted Accessibility access to this copy of SimFlutDock":
+            "macOS не подтверждает Accessibility для этой копии SimFlutDock",
+        "Device window not found • select a window in the settings menu":
+            "Окно устройства не найдено • выберите окно в меню настроек",
         "Waiting for Simulator / Device Hub windows": "Ожидание окон Simulator / Device Hub",
         "Simulator / Device Hub is not running": "Simulator / Device Hub не запущен",
         "{0}: AXWindows={1}, found {2}, with coordinates {3}": "{0}: AXWindows={1}, найдено {2}, с координатами {3}",
-        "{0} — select a project. Running sessions are preserved.": "{0} — выбрать проект. Работающие сессии сохраняются.",
+        "{0} — select a project. Running sessions are preserved.":
+            "{0} — выбрать проект. Работающие сессии сохраняются.",
         "Flutter project selection": "Выбор Flutter-проекта",
         "No project selected": "Проект не выбран",
         "Projects": "Проекты",
@@ -226,7 +292,8 @@ public enum L10n {
         "No device selected": "Устройство не выбрано",
         "Device unavailable": "Устройство недоступно",
         "Not running": "Не запущен",
-        "Main Dart isolate memory. Excludes the Flutter engine, graphics, and other isolates.": "Память основного Dart isolate. Не включает Flutter engine, графику и остальные isolate.",
+        "Main Dart isolate memory. Excludes the Flutter engine, graphics, and other isolates.":
+            "Память основного Dart isolate. Не включает Flutter engine, графику и остальные isolate.",
         "Selected": "Выбран",
         "Not selected": "Не выбран",
         ", main Dart isolate memory: ": ", память основного Dart isolate: ",
@@ -245,7 +312,8 @@ public enum L10n {
         "Close device picker": "Закрыть выбор устройства",
         "Launch Mode": "Режим запуска",
         "Only Debug is available on simulators.": "Для симулятора доступен только Debug.",
-        "Debug — debugging · Profile — performance · Release — production": "Debug — отладка · Profile — замеры · Release — релиз",
+        "Debug — debugging · Profile — performance · Release — production":
+            "Debug — отладка · Profile — замеры · Release — релиз",
         "Search devices or OS versions": "Поиск устройства или версии ОС",
         "Pinned": "Закреплённые",
         "iOS Simulators": "Симуляторы iOS",
@@ -272,7 +340,8 @@ public enum L10n {
         "Pin {0}": "Закрепить {0}",
         "Run — start a new {0} session on the selected device": "Run — новый запуск в {0} на выбранном устройстве",
         "Hot Reload — preserve Dart state": "Hot Reload — сохранить состояние Dart",
-        "Hot Restart — reset Dart state. After native code changes, use Stop and Run.": "Hot Restart — сбросить состояние Dart. После изменений нативного кода используйте Stop и Run.",
+        "Hot Restart — reset Dart state. After native code changes, use Stop and Run.":
+            "Hot Restart — сбросить состояние Dart. После изменений нативного кода используйте Stop и Run.",
         "Stop — stop only the selected session": "Stop — остановить только выбранную сессию",
         "Drag the panel using the space between buttons": "Перетащите панель за свободное место между кнопками",
         "Show logs for the selected project": "Показать логи выбранного проекта",
@@ -303,27 +372,32 @@ public enum L10n {
         "Saving restored.": "Сохранение восстановлено.",
         "Dismiss message": "Закрыть сообщение",
         "Settings are saved automatically": "Настройки сохраняются автоматически",
-        "Select a folder containing pubspec.yaml. The app starts only after you press Run.": "Выберите папку с pubspec.yaml. Запуск начинается только после нажатия Run.",
+        "Select a folder containing pubspec.yaml. The app starts only after you press Run.":
+            "Выберите папку с pubspec.yaml. Запуск начинается только после нажатия Run.",
         "Saved Projects": "Сохранённые проекты",
         "Project and Simulator": "Проект и симулятор",
         "Project": "Проект",
         "Select a project": "Выберите проект",
         "Project for simulator tools": "Проект для инструментов симулятора",
         "Device": "Устройство",
-        "Add a Flutter project in Projects to use simulator tools.": "Добавьте Flutter-проект в разделе «Проекты», чтобы использовать инструменты симулятора.",
+        "Add a Flutter project in Projects to use simulator tools.":
+            "Добавьте Flutter-проект в разделе «Проекты», чтобы использовать инструменты симулятора.",
         "Default SDK": "SDK по умолчанию",
         "Default Flutter SDK": "Flutter SDK по умолчанию",
         "Choose…": "Выбрать…",
-        "Used when the project has no SDK configured. Searches Homebrew, standard SDK folders, and the project's .fvm/flutter_sdk.": "Используется, если у проекта не указан свой SDK. Поиск включает Homebrew, обычные папки SDK и .fvm/flutter_sdk проекта.",
+        "Used when the project has no SDK configured. Searches Homebrew, standard SDK folders, and the project's .fvm/flutter_sdk.":
+            "Используется, если у проекта не указан свой SDK. Поиск включает Homebrew, обычные папки SDK и .fvm/flutter_sdk проекта.",
         "Development Environment": "Окружение разработки",
         "Flutter and Xcode": "Flutter и Xcode",
         "Checking…": "Проверка…",
         "Check": "Проверить",
-        "Xcode is selected from system settings or an installed app. Finder uses its own PATH.": "Xcode выбирается из настроек системы или установленного приложения. Finder использует свой PATH.",
+        "Xcode is selected from system settings or an installed app. Finder uses its own PATH.":
+            "Xcode выбирается из настроек системы или установленного приложения. Finder использует свой PATH.",
         "Settings": "Настройки",
         "Preferences": "Предпочтения",
         "Background helper unavailable": "Помощник автозапуска недоступен",
-        "Used when no project SDK is configured. Supports FVM.": "Используется, если SDK проекта не указан. Поддерживается FVM.",
+        "Used when no project SDK is configured. Supports FVM.":
+            "Используется, если SDK проекта не указан. Поддерживается FVM.",
         "Uses the active Xcode installation.": "Используется выбранная установка Xcode.",
         "Application Language": "Язык приложения",
         "Changes apply immediately.": "Изменения применяются сразу.",
@@ -338,33 +412,41 @@ public enum L10n {
         "Add Project": "Добавить проект",
         "The panel can be moved independently of Simulator.": "Панель можно перемещать независимо от симулятора.",
         "Hide or show the panel on click": "Скрывать и показывать панель по нажатию",
-        "Allow access to attach the panel to a Simulator window.": "Разрешите доступ для привязки панели к окну симулятора.",
+        "Allow access to attach the panel to a Simulator window.":
+            "Разрешите доступ для привязки панели к окну симулятора.",
         "Actions for {0}": "Действия для {0}",
         "Uses the project SDK or the default SDK.": "Используется SDK проекта или общий SDK.",
         "Panel Placement": "Расположение панели",
         "Menu Bar Icon": "Иконка в строке меню",
         "Click to hide or show the unbound panel": "Скрывать и показывать непривязанную панель по нажатию",
-        "When the panel is not attached to a Simulator window, one click hides it completely and the next shows it again.": "Если панель не привязана к окну симулятора, одно нажатие полностью скрывает её, а следующее снова показывает.",
+        "When the panel is not attached to a Simulator window, one click hides it completely and the next shows it again.":
+            "Если панель не привязана к окну симулятора, одно нажатие полностью скрывает её, а следующее снова показывает.",
         "Simulator Side": "Сторона Simulator",
         "Side of the Simulator window": "Сторона окна Simulator",
-        "For this device, the panel works independently of Simulator.": "Для этого устройства панель работает отдельно от Simulator.",
-        "Turn off Free Position to choose an attachment side.": "Выключите свободное положение, чтобы выбрать сторону привязки.",
-        "If there is not enough room on the selected side, the panel appears on the opposite side.": "Если с выбранной стороны не хватает места, панель появится с другой стороны окна.",
+        "For this device, the panel works independently of Simulator.":
+            "Для этого устройства панель работает отдельно от Simulator.",
+        "Turn off Free Position to choose an attachment side.":
+            "Выключите свободное положение, чтобы выбрать сторону привязки.",
+        "If there is not enough room on the selected side, the panel appears on the opposite side.":
+            "Если с выбранной стороны не хватает места, панель появится с другой стороны окна.",
         "Simulator Window Access": "Доступ к окнам Simulator",
         "Accessibility": "Универсальный доступ",
         "Allowed": "Разрешён",
         "Permission required": "Требуется разрешение",
-        "Enable SimFlutDock in System Settings → Privacy & Security → Accessibility. Access is detected automatically.": "Включите SimFlutDock в Настройках системы → Конфиденциальность и безопасность → Универсальный доступ. Разрешение подхватится автоматически.",
+        "Enable SimFlutDock in System Settings → Privacy & Security → Accessibility. Access is detected automatically.":
+            "Включите SimFlutDock в Настройках системы → Конфиденциальность и безопасность → Универсальный доступ. Разрешение подхватится автоматически.",
         "Allow Access…": "Разрешить доступ…",
         "Check Permission": "Проверить разрешение",
-        "You can select a window manually in the panel menu: ⚙ → Panel Position → Attach to Simulator Window.": "Окно можно выбрать вручную в меню панели ⚙ → Положение панели → Привязать к окну Simulator.",
+        "You can select a window manually in the panel menu: ⚙ → Panel Position → Attach to Simulator Window.":
+            "Окно можно выбрать вручную в меню панели ⚙ → Положение панели → Привязать к окну Simulator.",
         "Automatic Launch": "Автозапуск",
         "Launch with Simulator": "Запускать вместе с Simulator",
         "Background Helper": "Фоновый помощник",
         "macOS Settings": "Настройки macOS",
         "Open Login Items…": "Открыть «Объекты входа»…",
         "Saved Links": "Сохранённые ссылки",
-        "Save links to screens and test scenarios for this project.": "Сохраните ссылки на экраны и тестовые сценарии этого проекта.",
+        "Save links to screens and test scenarios for this project.":
+            "Сохраните ссылки на экраны и тестовые сценарии этого проекта.",
         "Open": "Открыть",
         "Open link {0}": "Открыть ссылку {0}",
         "Edit link {0}": "Изменить ссылку {0}",
@@ -377,8 +459,10 @@ public enum L10n {
         "Cancel": "Отмена",
         "Save": "Сохранить",
         "Add Link…": "Добавить ссылку…",
-        "Links open in the selected iOS Simulator. The app must support the URL scheme or Universal Link; web links may open in Safari.": "Ссылки открываются в выбранном iOS Simulator. Приложение должно поддерживать соответствующую схему или Universal Link; веб-ссылка может открыться в Safari.",
-        "Select a running iOS Simulator to perform actions. You can save links without a running device.": "Для действий выберите запущенный iOS Simulator. Ссылки можно сохранять без запущенного устройства.",
+        "Links open in the selected iOS Simulator. The app must support the URL scheme or Universal Link; web links may open in Safari.":
+            "Ссылки открываются в выбранном iOS Simulator. Приложение должно поддерживать соответствующую схему или Universal Link; веб-ссылка может открыться в Safari.",
+        "Select a running iOS Simulator to perform actions. You can save links without a running device.":
+            "Для действий выберите запущенный iOS Simulator. Ссылки можно сохранять без запущенного устройства.",
         "Enter a link name.": "Укажите название ссылки.",
         "Launch": "Запуск",
         "Device and Mode": "Устройство и режим",
@@ -389,26 +473,32 @@ public enum L10n {
         "Project Flutter SDK": "Flutter SDK проекта",
         "Automatic / FVM": "Автоматически / FVM",
         "Changes are saved automatically.": "Изменения сохраняются автоматически.",
-        "Press Stop to change launch options. Switching projects preserves the session.": "Параметры запуска можно изменить после Stop. Переключение проекта сохраняет сессию.",
+        "Press Stop to change launch options. Switching projects preserves the session.":
+            "Параметры запуска можно изменить после Stop. Переключение проекта сохраняет сессию.",
         "Folders": "Папки",
         "App Data": "Данные приложения",
-        "Folder unavailable. Choose a new location or remove the entry.": "Папка недоступна. Укажите новое расположение или уберите запись.",
+        "Folder unavailable. Choose a new location or remove the entry.":
+            "Папка недоступна. Укажите новое расположение или уберите запись.",
         "Change Location…": "Изменить расположение…",
         "Remove from List": "Убрать из списка",
-        "Remove this project from the list? Files will remain on disk.": "Убрать проект из списка? Файлы останутся на диске.",
+        "Remove this project from the list? Files will remain on disk.":
+            "Убрать проект из списка? Файлы останутся на диске.",
         "Remove": "Убрать",
         "Copy": "Копировать",
         "Clear": "Очистить",
-        "Up to 2000 entries per project • quitting the app requires a new Run": "До 2000 записей на проект • полное завершение приложения требует нового Run",
+        "Up to 2000 entries per session • quitting the app requires a new Run":
+            "До 2000 записей на сессию • полное завершение приложения требует нового Run",
         "SimFlutDock — show simulator or panel": "SimFlutDock — показать симулятор или панель",
         "SimFlutDock — Projects and Settings": "SimFlutDock — проекты и настройки",
         "SimFlutDock — Logs": "SimFlutDock — логи",
         "Stop Flutter sessions and quit?": "Остановить Flutter-сессии и выйти?",
-        "Running projects will be stopped. Press Run again the next time you open SimFlutDock.": "Работающие проекты будут остановлены. При следующем открытии потребуется Run.",
+        "Running projects will be stopped. Press Run again the next time you open SimFlutDock.":
+            "Работающие проекты будут остановлены. При следующем открытии потребуется Run.",
         "Stop All and Quit": "Остановить все и выйти",
         "Unavailable": "Недоступно",
         "Language": "Язык",
         "Use System Language": "Как в системе",
-        "Follows the system language. English is used for unsupported languages.": "Язык определяется по системе. Для неподдерживаемых языков используется английский.",
+        "Follows the system language. English is used for unsupported languages.":
+            "Язык определяется по системе. Для неподдерживаемых языков используется английский.",
     ]
 }

@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SimFlutDockCore
 
 final class ProjectIconSourceTests: XCTestCase {
@@ -18,11 +19,15 @@ final class ProjectIconSourceTests: XCTestCase {
     func testCatalogUsesLargestExistingDefaultIcon() throws {
         try withProject { root in
             let catalog = "ios/Runner/Assets.xcassets/AppIcon.appiconset/"
-            try write(#"{"images":[{"filename":"small.png","size":"60x60","scale":"2x"},{"filename":"large.png","size":"1024x1024","scale":"1x"},{"filename":"dark.png","size":"1024x1024","appearances":[{"appearance":"luminosity","value":"dark"}]},{"filename":"missing.png","size":"2048x2048"}]}"#, to: catalog + "Contents.json", in: root)
+            try write(
+                #"{"images":[{"filename":"small.png","size":"60x60","scale":"2x"},{"filename":"large.png","size":"1024x1024","scale":"1x"},{"filename":"dark.png","size":"1024x1024","appearances":[{"appearance":"luminosity","value":"dark"}]},{"filename":"missing.png","size":"2048x2048"}]}"#,
+                to: catalog + "Contents.json", in: root)
             for name in ["small.png", "large.png", "dark.png"] {
                 try write("fixture", to: catalog + name, in: root)
             }
-            XCTAssertEqual(ProjectIconSource.candidates(projectPath: root.path).map(\.lastPathComponent), ["large.png", "small.png"])
+            XCTAssertEqual(
+                ProjectIconSource.candidates(projectPath: root.path).map(\.lastPathComponent),
+                ["large.png", "small.png"])
         }
     }
 
@@ -34,16 +39,21 @@ final class ProjectIconSourceTests: XCTestCase {
             try write("fixture", to: mac + "mac.png", in: root)
             try write("fixture", to: "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png", in: root)
             try write("fixture", to: "web/icons/Icon-512.png", in: root)
-            XCTAssertEqual(ProjectIconSource.candidates(projectPath: root.path).map(\.lastPathComponent), ["mac.png", "ic_launcher.png", "Icon-512.png"])
+            XCTAssertEqual(
+                ProjectIconSource.candidates(projectPath: root.path).map(\.lastPathComponent),
+                ["mac.png", "ic_launcher.png", "Icon-512.png"])
         }
     }
 
     func testMissingProjectAndUnsafeCatalogFilenamesHaveNoCandidates() throws {
         try withProject { root in
-            XCTAssertTrue(ProjectIconSource.candidates(projectPath: root.appendingPathComponent("missing").path).isEmpty)
+            XCTAssertTrue(
+                ProjectIconSource.candidates(projectPath: root.appendingPathComponent("missing").path).isEmpty)
             let catalog = "ios/Runner/Assets.xcassets/AppIcon.appiconset/"
             try write("fixture", to: "ios/Runner/Assets.xcassets/outside.png", in: root)
-            try write(#"{"images":[{"filename":"../outside.png"},{"filename":"/tmp/icon.png"},{"filename":".."},{"filename":""}]}"#, to: catalog + "Contents.json", in: root)
+            try write(
+                #"{"images":[{"filename":"../outside.png"},{"filename":"/tmp/icon.png"},{"filename":".."},{"filename":""}]}"#,
+                to: catalog + "Contents.json", in: root)
             XCTAssertTrue(ProjectIconSource.candidates(projectPath: root.path).isEmpty)
         }
     }

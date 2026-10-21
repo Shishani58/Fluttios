@@ -6,7 +6,8 @@ import Darwin
 /// Accessibility remains the fallback when this facility is unavailable.
 @MainActor final class WindowServerObserver {
     static let shared = WindowServerObserver()
-    private typealias Callback = @convention(c) (UInt32, UnsafeMutableRawPointer?, Int, UnsafeMutableRawPointer?) -> Void
+    private typealias Callback =
+        @convention(c) (UInt32, UnsafeMutableRawPointer?, Int, UnsafeMutableRawPointer?) -> Void
     private typealias Register = @convention(c) (Callback, UInt32, UnsafeMutableRawPointer?) -> Int32
     private typealias Request = @convention(c) (Int32, UnsafeMutablePointer<UInt32>?, Int32) -> Int32
     private typealias Bounds = @convention(c) (Int32, UInt32, UnsafeMutablePointer<CGRect>) -> Int32
@@ -24,12 +25,13 @@ import Darwin
     private init() {
         guard ProcessInfo.processInfo.environment["FLUTTIOS_DISABLE_PRIVATE_WINDOW_API"] != "1" else { return }
         guard let sky = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY),
-              let ax = dlopen("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices", RTLD_LAZY),
-              let main = dlsym(sky, "SLSMainConnectionID"),
-              let registration = dlsym(sky, "SLSRegisterNotifyProc"),
-              let subscription = dlsym(sky, "SLSRequestNotificationsForWindows"),
-              let geometry = dlsym(sky, "SLSGetWindowBounds"),
-              let identity = dlsym(ax, "_AXUIElementGetWindow") else { return }
+            let ax = dlopen("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices", RTLD_LAZY),
+            let main = dlsym(sky, "SLSMainConnectionID"),
+            let registration = dlsym(sky, "SLSRegisterNotifyProc"),
+            let subscription = dlsym(sky, "SLSRequestNotificationsForWindows"),
+            let geometry = dlsym(sky, "SLSGetWindowBounds"),
+            let identity = dlsym(ax, "_AXUIElementGetWindow")
+        else { return }
         connection = unsafeBitCast(main, to: (@convention(c) () -> Int32).self)()
         request = unsafeBitCast(subscription, to: Request.self)
         bounds = unsafeBitCast(geometry, to: Bounds.self)
@@ -58,7 +60,10 @@ import Darwin
         if ids == watched { return true }
         var list = Array(ids)
         let result = list.withUnsafeMutableBufferPointer { request(connection, $0.baseAddress, Int32($0.count)) }
-        guard result == 0 else { watched = []; return false }
+        guard result == 0 else {
+            watched = []
+            return false
+        }
         watched = ids
         return true
     }

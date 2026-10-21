@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SimFlutDockCore
 
 final class LocalizationTests: XCTestCase {
@@ -29,8 +30,10 @@ final class LocalizationTests: XCTestCase {
     func testFormattedTranslationsPreserveValuesWithoutInterpretingThem() {
         let key = "Could not start {0}: {1}"
         let values = ["iPhone {1}", "Error 42"]
-        XCTAssertEqual(L10n.translate(key, arguments: values, language: .english), "Could not start iPhone {1}: Error 42")
-        XCTAssertEqual(L10n.translate(key, arguments: values, language: .russian), "Не удалось запустить iPhone {1}: Error 42")
+        XCTAssertEqual(
+            L10n.translate(key, arguments: values, language: .english), "Could not start iPhone {1}: Error 42")
+        XCTAssertEqual(
+            L10n.translate(key, arguments: values, language: .russian), "Не удалось запустить iPhone {1}: Error 42")
         XCTAssertEqual(L10n.translate("External tool output", language: .russian), "External tool output")
     }
 
@@ -50,8 +53,11 @@ final class LocalizationTests: XCTestCase {
     @MainActor func testAlreadyDisplayedNoticesFollowLanguageChanges() {
         let previous = UserDefaults.standard.object(forKey: L10n.preferenceKey)
         defer {
-            if let previous { UserDefaults.standard.set(previous, forKey: L10n.preferenceKey) }
-            else { UserDefaults.standard.removeObject(forKey: L10n.preferenceKey) }
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: L10n.preferenceKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: L10n.preferenceKey)
+            }
         }
         L10n.language = .english
         XCTAssertEqual(L10n.display("Не удалось запустить iPhone: Error 42"), "Could not start iPhone: Error 42")
@@ -63,7 +69,9 @@ final class LocalizationTests: XCTestCase {
     }
 
     func testDeviceStateIsIndependentOfUILanguage() throws {
-        let json = Data(#"[{"id":"SIM","name":"iPhone","targetPlatform":"ios","emulator":true},{"id":"PHONE","name":"iPhone","targetPlatform":"ios","emulator":false}]"#.utf8)
+        let json = Data(
+            #"[{"id":"SIM","name":"iPhone","targetPlatform":"ios","emulator":true},{"id":"PHONE","name":"iPhone","targetPlatform":"ios","emulator":false}]"#
+                .utf8)
         XCTAssertEqual(try SimulatorDevice.flutterDevices(from: json).map(\.state), ["Booted", "Available"])
     }
 }

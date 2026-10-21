@@ -1,10 +1,12 @@
-import Foundation
 import CoreGraphics
+import Foundation
 
 public enum LaunchMode: String, Codable, CaseIterable {
     case debug, profile, release
     public var title: String { rawValue.capitalized }
-    public func supports(_ device: SimulatorDevice?) -> Bool { self == .debug || (device != nil && device?.isEmulator == false) }
+    public func supports(_ device: SimulatorDevice?) -> Bool {
+        self == .debug || (device != nil && device?.isEmulator == false)
+    }
 }
 
 public struct LaunchConfiguration: Codable, Equatable {
@@ -30,18 +32,39 @@ public struct LaunchConfiguration: Codable, Equatable {
     }
     public mutating func setMode(_ mode: LaunchMode) {
         let oldPrefix = self.mode.title
-        let suffix = buildConfiguration.lowercased().hasPrefix(oldPrefix.lowercased() + "-") ? String(buildConfiguration.dropFirst(oldPrefix.count)) : ""
-        self.mode = mode; buildConfiguration = mode.title + suffix
+        let suffix =
+            buildConfiguration.lowercased().hasPrefix(oldPrefix.lowercased() + "-")
+            ? String(buildConfiguration.dropFirst(oldPrefix.count)) : ""
+        self.mode = mode
+        buildConfiguration = mode.title + suffix
     }
     public func validatedArguments(for device: SimulatorDevice? = nil) throws -> [String] {
-        let reserved = ["--debug", "--release", "--profile", "--machine", "--no-machine", "--start-paused", "--no-resident", "--device-id", "-d", "--target", "-t", "--flavor", "--use-application-binary", "--help", "-h"]
+        let reserved = [
+            "--debug", "--release", "--profile", "--machine", "--no-machine", "--start-paused", "--no-resident",
+            "--device-id", "-d", "--target", "-t", "--flavor", "--use-application-binary", "--help", "-h",
+        ]
         guard !entrypoint.isEmpty, !entrypoint.hasPrefix("-"), !scheme.isEmpty,
-              (buildConfiguration.lowercased() == mode.rawValue || buildConfiguration.lowercased().hasPrefix(mode.rawValue + "-")) else {
-            throw SimFlutDockError.message(L10n.text("Specify an entrypoint, scheme, and {0} or {1}-flavor configuration.", "\(mode.title)", "\(mode.title)"))
+            buildConfiguration.lowercased() == mode.rawValue
+                || buildConfiguration.lowercased().hasPrefix(mode.rawValue + "-")
+        else {
+            throw SimFlutDockError.message(
+                L10n.text(
+                    "Specify an entrypoint, scheme, and {0} or {1}-flavor configuration.", "\(mode.title)",
+                    "\(mode.title)"))
         }
-        if let device, !mode.supports(device) { throw SimFlutDockError.message(L10n.text("{0} is unavailable on this simulator. Choose Debug or a physical device.", "\(mode.title)")) }
-        guard !arguments.contains(where: { arg in reserved.contains(where: { arg == $0 || arg.hasPrefix($0 + "=") }) || arg == "--" || (arg.hasPrefix("-d") && !arg.hasPrefix("--")) || (arg.hasPrefix("-t") && !arg.hasPrefix("--")) }) else {
-            throw SimFlutDockError.message(L10n.text("The app sets the launch mode, device, entrypoint, and flavor. Remove conflicting arguments."))
+        if let device, !mode.supports(device) {
+            throw SimFlutDockError.message(
+                L10n.text("{0} is unavailable on this simulator. Choose Debug or a physical device.", "\(mode.title)"))
+        }
+        guard
+            !arguments.contains(where: { arg in
+                reserved.contains(where: { arg == $0 || arg.hasPrefix($0 + "=") }) || arg == "--"
+                    || (arg.hasPrefix("-d") && !arg.hasPrefix("--")) || (arg.hasPrefix("-t") && !arg.hasPrefix("--"))
+            })
+        else {
+            throw SimFlutDockError.message(
+                L10n.text("The app sets the launch mode, device, entrypoint, and flavor. Remove conflicting arguments.")
+            )
         }
         var result = ["run", "--machine", "--" + mode.rawValue, "--target", entrypoint]
         if scheme != "Runner" { result += ["--flavor", scheme] }
@@ -54,15 +77,20 @@ public struct SavedDeepLink: Codable, Identifiable, Equatable {
     public var name: String
     public var url: String
     public init(id: UUID = UUID(), name: String = "", url: String = "") {
-        self.id = id; self.name = name; self.url = url
+        self.id = id
+        self.name = name
+        self.url = url
     }
     public static func validatedURL(_ value: String) throws -> String {
         let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty, value.rangeOfCharacter(from: .whitespacesAndNewlines.union(.controlCharacters)) == nil,
-              let url = URL(string: value), let scheme = url.scheme, !scheme.isEmpty,
-              !["file", "data", "javascript"].contains(scheme.lowercased()),
-              (!["http", "https"].contains(scheme.lowercased()) || !(url.host ?? "").isEmpty) else {
-            throw SimFlutDockError.message(L10n.text("Enter a complete URL with a scheme, such as myapp://profile or https://example.com/profile."))
+            let url = URL(string: value), let scheme = url.scheme, !scheme.isEmpty,
+            !["file", "data", "javascript"].contains(scheme.lowercased()),
+            !["http", "https"].contains(scheme.lowercased()) || !(url.host ?? "").isEmpty
+        else {
+            throw SimFlutDockError.message(
+                L10n.text("Enter a complete URL with a scheme, such as myapp://profile or https://example.com/profile.")
+            )
         }
         return url.absoluteString
     }
@@ -96,7 +124,11 @@ public struct Project: Codable, Identifiable, Equatable {
         deepLinks = try values.decodeIfPresent([SavedDeepLink].self, forKey: .deepLinks) ?? []
     }
     public init(id: UUID = UUID(), name: String, path: String) {
-        self.id = id; self.name = name; self.path = path; lastOpened = Date(); launch = .init()
+        self.id = id
+        self.name = name
+        self.path = path
+        lastOpened = Date()
+        launch = .init()
     }
 }
 
@@ -111,12 +143,22 @@ public struct SimulatorDevice: Codable, Identifiable, Equatable {
     public var isEmulator: Bool = true
     public var isIOSSimulator: Bool { targetPlatform == "ios" && isEmulator }
     public var id: String { udid }
-    public init(udid: String, name: String, state: String, isAvailable: Bool = true, runtime: String? = nil, isPhysical: Bool = false, targetPlatform: String = "ios", isEmulator: Bool? = nil) {
-        self.udid = udid; self.name = name; self.state = state; self.isAvailable = isAvailable; self.runtime = runtime; self.isPhysical = isPhysical
+    public init(
+        udid: String, name: String, state: String, isAvailable: Bool = true, runtime: String? = nil,
+        isPhysical: Bool = false, targetPlatform: String = "ios", isEmulator: Bool? = nil
+    ) {
+        self.udid = udid
+        self.name = name
+        self.state = state
+        self.isAvailable = isAvailable
+        self.runtime = runtime
+        self.isPhysical = isPhysical
         self.targetPlatform = targetPlatform
         self.isEmulator = isEmulator ?? (targetPlatform == "ios" && !isPhysical)
     }
-    private enum CodingKeys: String, CodingKey { case udid, name, state, isAvailable, runtime, isPhysical, targetPlatform, isEmulator }
+    private enum CodingKeys: String, CodingKey {
+        case udid, name, state, isAvailable, runtime, isPhysical, targetPlatform, isEmulator
+    }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         udid = try values.decode(String.self, forKey: .udid)
@@ -126,7 +168,8 @@ public struct SimulatorDevice: Codable, Identifiable, Equatable {
         runtime = try values.decodeIfPresent(String.self, forKey: .runtime)
         isPhysical = try values.decodeIfPresent(Bool.self, forKey: .isPhysical) ?? false
         targetPlatform = try values.decodeIfPresent(String.self, forKey: .targetPlatform) ?? "ios"
-        isEmulator = try values.decodeIfPresent(Bool.self, forKey: .isEmulator) ?? (targetPlatform == "ios" && !isPhysical)
+        isEmulator =
+            try values.decodeIfPresent(Bool.self, forKey: .isEmulator) ?? (targetPlatform == "ios" && !isPhysical)
     }
     public static func physicalDevices(from data: Data) throws -> [SimulatorDevice] {
         try flutterDevices(from: data).filter { $0.targetPlatform == "ios" && $0.isPhysical }
@@ -141,9 +184,12 @@ public struct SimulatorDevice: Codable, Identifiable, Equatable {
         var seen = Set<String>()
         return try JSONDecoder().decode([FlutterDevice].self, from: data)
             .filter { $0.isSupported != false && seen.insert($0.id).inserted }
-            .map { SimulatorDevice(udid: $0.id, name: $0.name, state: $0.emulator ? "Booted" : "Available", runtime: $0.sdk,
-                                   isPhysical: ["ios", "android"].contains($0.targetPlatform) && !$0.emulator,
-                                   targetPlatform: $0.targetPlatform, isEmulator: $0.emulator) }
+            .map {
+                SimulatorDevice(
+                    udid: $0.id, name: $0.name, state: $0.emulator ? "Booted" : "Available", runtime: $0.sdk,
+                    isPhysical: ["ios", "android"].contains($0.targetPlatform) && !$0.emulator,
+                    targetPlatform: $0.targetPlatform, isEmulator: $0.emulator)
+            }
     }
 }
 
@@ -174,7 +220,9 @@ public enum SessionState: String, Codable {
 }
 
 public enum SimFlutDockError: LocalizedError {
-    case message(String), timeout(String), exited
+    case message(String)
+    case timeout(String)
+    case exited
     public var errorDescription: String? {
         switch self {
         case .message(let text): return text
@@ -189,7 +237,10 @@ public struct LogEntry: Identifiable {
     public let date = Date()
     public let text: String
     public let isError: Bool
-    public init(_ text: String, isError: Bool = false) { self.text = text; self.isError = isError }
+    public init(_ text: String, isError: Bool = false) {
+        self.text = text
+        self.isError = isError
+    }
 }
 
 public enum SimulatorWindowIdentity {
@@ -197,9 +248,10 @@ public enum SimulatorWindowIdentity {
     public static func matches(title: String, device: SimulatorDevice, knownDevices: [SimulatorDevice]) -> Bool {
         guard matches(title: title, device: device) else { return false }
         if title.localizedCaseInsensitiveContains(device.id) { return true }
-        let sameName = Set(knownDevices.filter {
-            $0.isIOSSimulator && $0.name.caseInsensitiveCompare(device.name) == .orderedSame
-        }.map(\.id))
+        let sameName = Set(
+            knownDevices.filter {
+                $0.isIOSSimulator && $0.name.caseInsensitiveCompare(device.name) == .orderedSame
+            }.map(\.id))
         return sameName == [device.id]
     }
     public static func matches(title: String, device: SimulatorDevice) -> Bool {
@@ -207,7 +259,8 @@ public enum SimulatorWindowIdentity {
         if title.localizedCaseInsensitiveContains(device.id) { return true }
         let name = NSRegularExpression.escapedPattern(for: device.name)
         let pattern = "^" + name + "(?:$|\\s*[–—(\\-])"
-        return title.trimmingCharacters(in: .whitespacesAndNewlines).range(of: pattern, options: .regularExpression) != nil
+        return title.trimmingCharacters(in: .whitespacesAndNewlines).range(of: pattern, options: .regularExpression)
+            != nil
     }
 }
 
@@ -234,16 +287,22 @@ public enum PanelPlacement {
     public static func appKitRect(ax: CGRect, primaryTop: CGFloat) -> CGRect {
         CGRect(x: ax.minX, y: primaryTop - ax.maxY, width: ax.width, height: ax.height)
     }
-    public static func frame(window: CGRect, size: CGSize, visible: CGRect, offset: CGSize? = nil, side: PanelSide = .below) -> CGRect {
+    public static func frame(
+        window: CGRect, size: CGSize, visible: CGRect, offset: CGSize? = nil, side: PanelSide = .below
+    ) -> CGRect {
         resolve(window: window, visible: visible, offset: offset, side: side, size: { _ in size }).frame
     }
     /// Resolve each candidate with its own orientation, including screen-edge fallbacks.
-    public static func attachedLayout(window: CGRect, horizontalSize: CGSize, verticalSize: CGSize, visible: CGRect, side: PanelSide) -> (frame: CGRect, side: PanelSide) {
+    public static func attachedLayout(
+        window: CGRect, horizontalSize: CGSize, verticalSize: CGSize, visible: CGRect, side: PanelSide
+    ) -> (frame: CGRect, side: PanelSide) {
         resolve(window: window, visible: visible, offset: nil, side: side) {
             $0.isVertical ? verticalSize : horizontalSize
         }
     }
-    private static func resolve(window: CGRect, visible: CGRect, offset: CGSize?, side: PanelSide, size: (PanelSide) -> CGSize) -> (frame: CGRect, side: PanelSide) {
+    private static func resolve(
+        window: CGRect, visible: CGRect, offset: CGSize?, side: PanelSide, size: (PanelSide) -> CGSize
+    ) -> (frame: CGRect, side: PanelSide) {
         let gap: CGFloat = 8
         func candidate(_ side: PanelSide) -> CGRect {
             let size = size(side)
@@ -252,15 +311,18 @@ public enum PanelPlacement {
             case .below, .above:
                 // Collapse the optional gap at the screen edge before switching
                 // sides. The panel itself must still fit outside the simulator.
-                let availableGap = side == .below
+                let availableGap =
+                    side == .below
                     ? window.minY - visible.minY - size.height
                     : visible.maxY - window.maxY - size.height
                 let verticalGap = min(gap, max(0, availableGap))
-                origin = CGPoint(x: max(visible.minX, min(window.midX - size.width / 2, visible.maxX - size.width)),
-                                 y: side == .below ? window.minY - size.height - verticalGap : window.maxY + verticalGap)
+                origin = CGPoint(
+                    x: max(visible.minX, min(window.midX - size.width / 2, visible.maxX - size.width)),
+                    y: side == .below ? window.minY - size.height - verticalGap : window.maxY + verticalGap)
             case .left, .right:
-                origin = CGPoint(x: side == .left ? window.minX - size.width - gap : window.maxX + gap,
-                                 y: max(visible.minY, min(window.maxY - size.height, visible.maxY - size.height)))
+                origin = CGPoint(
+                    x: side == .left ? window.minX - size.width - gap : window.maxX + gap,
+                    y: max(visible.minY, min(window.maxY - size.height, visible.maxY - size.height)))
             }
             return CGRect(origin: origin, size: size)
         }

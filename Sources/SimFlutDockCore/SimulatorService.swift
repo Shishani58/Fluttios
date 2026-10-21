@@ -1,7 +1,7 @@
-import Foundation
 import AppKit
 import Combine
 import Darwin
+import Foundation
 
 public struct SimulatorHostProcess {
     public let application: NSRunningApplication
@@ -19,7 +19,9 @@ public enum SimulatorHost {
     @MainActor public static var runningProcesses: [SimulatorHostProcess] {
         runningApplications.flatMap { application -> [SimulatorHostProcess] in
             if application.processIdentifier > 0 {
-                return [SimulatorHostProcess(application: application, processIdentifier: application.processIdentifier)]
+                return [
+                    SimulatorHostProcess(application: application, processIdentifier: application.processIdentifier)
+                ]
             }
             // Device Hub on macOS 27 can have a valid Launch Services record
             // whose NSRunningApplication PID is -1. Resolve only its exact executable.
@@ -46,7 +48,8 @@ public enum SimulatorHost {
     }
     public static func applicationURL(developer: String) throws -> URL {
         let classic = URL(fileURLWithPath: developer + "/Applications/Simulator.app")
-        let hub = URL(fileURLWithPath: developer).deletingLastPathComponent().appendingPathComponent("Applications/DeviceHub.app")
+        let hub = URL(fileURLWithPath: developer).deletingLastPathComponent().appendingPathComponent(
+            "Applications/DeviceHub.app")
         if FileManager.default.fileExists(atPath: classic.path) { return classic }
         if FileManager.default.fileExists(atPath: hub.path) { return hub }
         throw SimFlutDockError.message(L10n.text("Simulator / Device Hub not found in the selected Xcode."))
@@ -56,7 +59,8 @@ public enum SimulatorHost {
 public enum SimulatorToolCommand {
     public static func arguments(device: SimulatorDevice, operation: String, value: String) throws -> [String] {
         guard device.isIOSSimulator, device.isAvailable, device.state == "Booted", !device.id.isEmpty,
-              device.id != "booted" else {
+            device.id != "booted"
+        else {
             throw SimFlutDockError.message(L10n.text("Select a running iOS Simulator in project settings."))
         }
         if operation == "openurl" {
@@ -79,23 +83,34 @@ public enum SimulatorToolCommand {
     @Published public private(set) var refreshing = false
     public init() {}
     public func refresh(project: Project? = nil, globalSDK: String? = nil) async {
-        guard !refreshing else { return }; refreshing = true; defer { refreshing = false }
+        guard !refreshing else { return }
+        refreshing = true
+        defer { refreshing = false }
         var discovered: [SimulatorDevice] = []
         var failures: [String] = []
         do {
-            let result = try await ToolRunner.run("/usr/bin/xcrun", ["simctl", "list", "devices", "available", "--json"], timeout: 20).checked()
+            let result = try await ToolRunner.run(
+                "/usr/bin/xcrun", ["simctl", "list", "devices", "available", "--json"], timeout: 20
+            ).checked()
             struct List: Decodable { let devices: [String: [SimulatorDevice]] }
             let list = try JSONDecoder().decode(List.self, from: result.stdout)
             discovered = list.devices.flatMap { runtime, values in
                 values.filter { $0.isAvailable && runtime.contains("iOS") }.map { device in
-                    var device = device; device.runtime = runtime.components(separatedBy: ".").last?.replacingOccurrences(of: "-", with: " "); return device
+                    var device = device
+                    device.runtime = runtime.components(separatedBy: ".").last?.replacingOccurrences(of: "-", with: " ")
+                    return device
                 }
             }.sorted { $0.name < $1.name }
         } catch { failures.append(L10n.text("Simulators: ") + error.localizedDescription) }
         do {
-            let sdkProject = project ?? Project(name: L10n.text("Devices"), path: FileManager.default.homeDirectoryForCurrentUser.path)
+            let sdkProject =
+                project
+                ?? Project(name: L10n.text("Devices"), path: FileManager.default.homeDirectoryForCurrentUser.path)
             let sdk = try FlutterSDKResolver.resolve(project: sdkProject, global: globalSDK)
-            let result = try await ToolRunner.run(sdk, ["devices", "--machine", "--device-timeout", "5"], directory: project?.path, environment: FlutterSDKResolver.environment(sdk: sdk), timeout: 30).checked()
+            let result = try await ToolRunner.run(
+                sdk, ["devices", "--machine", "--device-timeout", "5"], directory: project?.path,
+                environment: FlutterSDKResolver.environment(sdk: sdk), timeout: 30
+            ).checked()
             let flutterDevices = try SimulatorDevice.flutterDevices(from: result.stdout)
             let knownIDs = Set(discovered.map(\.id))
             discovered += flutterDevices.filter { !knownIDs.contains($0.id) }
@@ -109,12 +124,15 @@ public enum SimulatorToolCommand {
             let result = try await ToolRunner.run("/usr/bin/xcrun", ["simctl", "boot", device.id], timeout: 30)
             if result.status != 0 && !result.text.contains("current state: Booted") { _ = try result.checked() }
         }
-        guard let developer = FlutterSDKResolver.developerDirectory() else { throw SimFlutDockError.message(L10n.text("Install the full version of Xcode.")) }
+        guard let developer = FlutterSDKResolver.developerDirectory() else {
+            throw SimFlutDockError.message(L10n.text("Install the full version of Xcode."))
+        }
         let simulatorURL = try SimulatorHost.applicationURL(developer: developer)
         let config = NSWorkspace.OpenConfiguration()
         if simulatorURL.lastPathComponent == "Simulator.app" { config.arguments = ["-CurrentDeviceUDID", device.id] }
         try await NSWorkspace.shared.openApplication(at: simulatorURL, configuration: config)
-        _ = try await ToolRunner.run("/usr/bin/xcrun", ["simctl", "bootstatus", device.id, "-b"], timeout: 180).checked()
+        _ = try await ToolRunner.run("/usr/bin/xcrun", ["simctl", "bootstatus", device.id, "-b"], timeout: 180)
+            .checked()
     }
     public func foreground(deviceID: String, bundleID: String) async throws {
         // simctl launch (without --terminate-running-process) foregrounds the existing app.
@@ -122,12 +140,17 @@ public enum SimulatorToolCommand {
         SimulatorHost.runningApplications.first?.activate(options: [])
     }
     public func currentSimulator(id: String) async throws -> SimulatorDevice {
-        let result = try await ToolRunner.run("/usr/bin/xcrun", ["simctl", "list", "devices", "available", "--json"], timeout: 20).checked()
+        let result = try await ToolRunner.run(
+            "/usr/bin/xcrun", ["simctl", "list", "devices", "available", "--json"], timeout: 20
+        ).checked()
         struct List: Decodable { let devices: [String: [SimulatorDevice]] }
         let list = try JSONDecoder().decode(List.self, from: result.stdout)
-        guard let device = list.devices.filter({ $0.key.contains("iOS") }).values.flatMap({ $0 })
-            .first(where: { $0.id == id && $0.isAvailable }) else {
-            throw SimFlutDockError.message(L10n.text("The project's simulator is unavailable. Select an iOS Simulator in project settings."))
+        guard
+            let device = list.devices.filter({ $0.key.contains("iOS") }).values.flatMap({ $0 })
+                .first(where: { $0.id == id && $0.isAvailable })
+        else {
+            throw SimFlutDockError.message(
+                L10n.text("The project's simulator is unavailable. Select an iOS Simulator in project settings."))
         }
         return device
     }
@@ -141,8 +164,11 @@ public enum SimulatorToolCommand {
         let result = try await ToolRunner.run("/usr/bin/xcrun", args, timeout: 20).checked()
         let path = String(decoding: result.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
         var directory: ObjCBool = false
-        guard path.hasPrefix("/"), FileManager.default.fileExists(atPath: path, isDirectory: &directory), directory.boolValue else {
-            throw SimFlutDockError.message(L10n.text("Data folder unavailable. Install the app on the selected simulator using Run."))
+        guard path.hasPrefix("/"), FileManager.default.fileExists(atPath: path, isDirectory: &directory),
+            directory.boolValue
+        else {
+            throw SimFlutDockError.message(
+                L10n.text("Data folder unavailable. Install the app on the selected simulator using Run."))
         }
         return URL(fileURLWithPath: path, isDirectory: true)
     }
@@ -156,16 +182,27 @@ public enum SimulatorToolCommand {
         if let device, device.targetPlatform != "ios" {
             return URL(fileURLWithPath: project.path).resolvingSymlinksInPath().path
         }
-        let args = ["xcodebuild", "-project", "ios/Runner.xcodeproj", "-scheme", project.launch.scheme,
-                    "-configuration", project.launch.buildConfiguration, "-sdk", device?.isPhysical == true ? "iphoneos" : "iphonesimulator", "-showBuildSettings", "-json"]
+        let args = [
+            "xcodebuild", "-project", "ios/Runner.xcodeproj", "-scheme", project.launch.scheme,
+            "-configuration", project.launch.buildConfiguration, "-sdk",
+            device?.isPhysical == true ? "iphoneos" : "iphonesimulator", "-showBuildSettings", "-json",
+        ]
         let result = try await ToolRunner.run("/usr/bin/xcrun", args, directory: project.path, timeout: 90).checked()
-        guard let rows = try JSONSerialization.jsonObject(with: result.stdout) as? [[String: Any]] else { throw SimFlutDockError.message(L10n.text("Xcode did not return project settings.")) }
-        let ids = Set(rows.compactMap { row -> String? in
-            guard let settings = row["buildSettings"] as? [String: Any], settings["PRODUCT_TYPE"] as? String == "com.apple.product-type.application" else { return nil }
-            return settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
-        })
+        guard let rows = try JSONSerialization.jsonObject(with: result.stdout) as? [[String: Any]] else {
+            throw SimFlutDockError.message(L10n.text("Xcode did not return project settings."))
+        }
+        let ids = Set(
+            rows.compactMap { row -> String? in
+                guard let settings = row["buildSettings"] as? [String: Any],
+                    settings["PRODUCT_TYPE"] as? String == "com.apple.product-type.application"
+                else { return nil }
+                return settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
+            })
         guard ids.count == 1, let id = ids.first, !id.isEmpty, !id.contains("$("), !id.contains(" ") else {
-            throw SimFlutDockError.message(L10n.text("Could not determine a unique bundle identifier. Check the scheme and Xcode configuration in project settings."))
+            throw SimFlutDockError.message(
+                L10n.text(
+                    "Could not determine a unique bundle identifier. Check the scheme and Xcode configuration in project settings."
+                ))
         }
         return id
     }
