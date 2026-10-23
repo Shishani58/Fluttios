@@ -11,9 +11,20 @@ import SwiftUI
     private var logsWindow: NSWindow?
     private var activationToken: NSObjectProtocol?
     private var exiting = false
+    private var sessionControl: SessionControl?
+    private var controlServer: LocalControlServer?
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         model = AppModel()
+        let control = SessionControl(manager: model.manager)
+        let server = LocalControlServer { data in await control.handle(data) }
+        do {
+            try server.start()
+            sessionControl = control
+            controlServer = server
+        } catch {
+            NSLog("Fluttios local session control could not start: %@", error.localizedDescription)
+        }
         model.showSettings = { [weak self] in self?.showSettings() }
         model.showLogs = { [weak self] in self?.showLogs() }
         model.showPanel = { [weak self] in self?.coordinator.show() }
@@ -97,6 +108,7 @@ import SwiftUI
     }
     @objc private func quitApp() { NSApp.terminate(nil) }
     func applicationWillTerminate(_ notification: Notification) {
+        controlServer?.stop()
         model.updater.discardPreparedUpdateOnQuit()
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

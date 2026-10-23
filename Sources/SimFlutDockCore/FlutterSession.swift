@@ -38,6 +38,8 @@ import Foundation
     private var startTimeout: Task<Void, Never>?
     private var intentionalStop = false
     private var generation = UUID()
+    /// Identifies this launch, including preparation, independently of the reusable session.
+    public var launchID: UUID { generation }
     public var canRun: Bool { !isAlive && !preparing && state != .stopping }
     public var canStop: Bool {
         (isAlive || preparing) && state != .stopping && state != .reloading && state != .restarting
@@ -83,6 +85,7 @@ import Foundation
         logBytes = 0
     }
     public func prepare(project: Project, device: SimulatorDevice) {
+        generation = UUID()
         launchProject = project
         self.device = device
         preparing = true
@@ -334,8 +337,8 @@ import Foundation
             launchFailureReason = nil
         }
     }
-    public func restart(full: Bool) {
-        guard canRestart, let appID, let client else { return }
+    @discardableResult public func restart(full: Bool) -> Task<Void, Never>? {
+        guard canRestart, let appID, let client else { return nil }
         state = full ? .restarting : .reloading
         error = nil
         let generation = generation
@@ -367,6 +370,7 @@ import Foundation
             }
             if self?.generation == generation { self?.operation = nil }
         }
+        return operation
     }
     public func stop() {
         guard hasWork, state != .stopping else { return }

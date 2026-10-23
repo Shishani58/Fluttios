@@ -10,7 +10,7 @@ A native macOS utility to run Flutter projects, use Hot Reload and read logs wit
 
 ## Install
 
-[**Download SimFlutDock 1.0.8 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.8/SimFlutDock-1.0.8.dmg)
+[**Download SimFlutDock 1.0.9 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.9/SimFlutDock-1.0.9.dmg)
 
 Requires **macOS 14+**, **Flutter SDK** and full **Xcode**. Supports Apple Silicon and Intel. Open the DMG and drag the app to **Applications**.
 
@@ -18,11 +18,7 @@ The build is not notarized by Apple. If macOS blocks the first launch, follow [A
 
 ### Updates
 
-The app checks stable GitHub Releases at launch, at most once a day. Check manually using **Settings → General → App Updates**. Automatic checks can be disabled.
-
-A manual **Check for Updates…** downloads and prepares a newer version automatically. A background check announces the update; choose **Download Update** to proceed. The app verifies the size, SHA-256, version, and signature, then offers **Quit and Install**. It quits, replaces the installed copy, and relaunches automatically. Stopping active Flutter sessions requires confirmation; cancelling quit postpones installation. Downloads can be cancelled. Automatic replacement requires a writable installation folder outside a DMG; a failed replacement restores the previous version.
-
-To ship an update, publish a stable `vX.Y.Z` release containing `SimFlutDock-X.Y.Z.dmg`, `SimFlutDock-X.Y.Z.dmg.sha256`, and `app-update.json`. The existing `scripts/build-dmg.sh` and release workflow create and publish all three files. The version must be higher than the installed version; prereleases are not offered.
+Update through **Settings → General → App Updates**. The app verifies SHA-256 and the signature before installation. Stopping active Flutter sessions requires confirmation.
 
 ## Features
 
@@ -40,11 +36,15 @@ To ship an update, publish a stable `vX.Y.Z` release containing `SimFlutDock-X.Y
 
 Hot Reload and Hot Restart require Debug mode. After native code or plugin changes, use **Stop → Run**.
 
-### Memory and background processes
+### AI session control (MCP)
 
-`dart:frontend_server_aot.dart.snapshot` is Flutter's compiler for Debug and Hot Reload. `Runner` is the launched app; `SimMetalHost` and `SimRenderServer` are iOS Simulator graphics services. Their memory is accounted for separately from SimFlutDock. **Stop** ends the Flutter session and remaining processes in its owned process group; the simulator stays booted. Shut down the specific device with `xcrun simctl shutdown <UDID>` when it is no longer needed.
+AI clients can list sessions, read state and logs, and use **Hot Reload**, **Hot Restart**, and **Stop**. Open SimFlutDock and start a Flutter session, then connect Codex (Python 3 required):
 
-SimFlutDock retains at most 2000 log entries and 2 MiB of log text per session, truncating individual entries to approximately 16 KiB. Oldest entries are discarded first. Removing an inactive project releases all its sessions and logs. These limits apply to retained log text, not total application memory.
+```bash
+codex mcp add fluttios -- python3 /Applications/SimFlutDock.app/Contents/Resources/fluttios-mcp.py
+```
+
+Set `tool_timeout_sec = 120` in the Codex server configuration. See [other clients and tool details](docs/mcp.md).
 
 ## Build from source
 

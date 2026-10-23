@@ -44,9 +44,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Verify and test
         run: |
-          ./scripts/check-version.sh
-          xcrun swift test --build-system native
-          ./scripts/verify-panel-presentation.sh
+          ./scripts/check.sh
       - name: Build universal DMG
         env:
           SIGNING_IDENTITY: '-'

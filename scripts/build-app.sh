@@ -62,6 +62,7 @@ xcrun lipo -create "${binaries[@]}" -output "$staged_app/Contents/MacOS/SimFlutD
 xcrun lipo -create "${helper_binaries[@]}" -output "$helper/Contents/MacOS/SimFlutDockHelper"
 cp Resources/Info.plist "$staged_app/Contents/Info.plist"
 cp Resources/AppIcon.icns "$staged_app/Contents/Resources/AppIcon.icns"
+cp scripts/fluttios-mcp.py "$staged_app/Contents/Resources/fluttios-mcp.py"
 cp Resources/Helper-Info.plist "$helper/Contents/Info.plist"
 signing_options=(--force --sign "$identity" --options runtime)
 if [[ "$distribution" == 1 ]]; then signing_options+=(--timestamp); else signing_options+=(--timestamp=none); fi

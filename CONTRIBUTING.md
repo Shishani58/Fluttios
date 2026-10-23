@@ -10,7 +10,7 @@ Run the same checks used by CI:
 ./scripts/check.sh
 ```
 
-This validates versions, shell syntax and property lists, builds the Swift package, runs its tests, and checks panel presentation. CI also builds the Xcode project. To build it locally without signing:
+This validates versions, shell syntax and property lists, builds the Swift package, runs its tests and the Python 3 MCP protocol tests, and checks panel presentation. CI also builds the Xcode project. To build it locally without signing:
 
 ```bash
 xcodebuild -project SimFlutDock.xcodeproj -scheme SimFlutDock \

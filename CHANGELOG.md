@@ -1,5 +1,12 @@
 # Changelog / История изменений
 
+## [1.0.9] — 2026-10-24
+
+- Added local MCP tools for existing Flutter sessions: list, state, logs, Hot Reload, Hot Restart, and Stop.
+  Добавлены локальные MCP-инструменты для запущенных Flutter-сессий: список, состояние, логи, Hot Reload, Hot Restart и Stop.
+- Commands target an explicit session and launch; retries use request IDs to prevent duplicate execution.
+  Команды адресованы конкретной сессии и запуску; идентификаторы запросов защищают от повторного выполнения.
+
 ## [1.0.8] — 2026-10-24
 
 - Allow Debug, Profile, and Release on Android devices and emulators, and select the next launch mode during an active session.
@@ -77,3 +84,5 @@ First public release of Fluttios. / Первый публичный релиз F
 [1.0.5]: https://github.com/Shishani58/Fluttios/tree/v1.0.5
 
 [1.0.8]: https://github.com/Shishani58/Fluttios/tree/v1.0.8
+
+[1.0.9]: https://github.com/Shishani58/Fluttios/tree/v1.0.9

@@ -18,6 +18,12 @@ This developer utility is not sandboxed. It executes Flutter/Xcode tools and use
 
 Утилита работает без sandbox, запускает инструменты Flutter/Xcode и использует Accessibility для привязки к окнам. Для недокументированных уведомлений окон предусмотрен fallback на публичный Accessibility. Проверяйте Flutter-проект перед запуском.
 
+## Local MCP control / Локальное управление MCP
+
+The running app accepts session-control requests over a Unix socket in `~/Library/Application Support/Fluttios/mcp`, a directory with mode 0700. The socket has mode 0600 and accepts peers with the same effective user ID. Programs running as that user can read session metadata and retained logs, reload/restart Dart, and stop a session. Connecting an AI client shares requested project/device metadata and logs with that client. The app does not publish a network listener or automatically launch Flutter for MCP calls. See [the MCP guide](docs/mcp.md) for client permissions and retry behavior.
+
+Работающее приложение принимает команды через Unix socket в закрытом каталоге `~/Library/Application Support/Fluttios/mcp`. Доступ ограничен текущим пользователем macOS. Подключённый ИИ-клиент получает запрошенные сведения о проектах, устройствах и логи; также может выполнять Reload, Restart и Stop. Учитывайте это при выборе клиента и разрешений инструментов. Само приложение не открывает сетевой сервер и не запускает Flutter по командам MCP.
+
 ## Publication / Публикация
 
 Only the six documented images in `docs/images` are approved for publication. They render production SwiftUI views with fictional projects/devices, without project execution. Local reports, logs, drafts, builds, workspace state, environment files and signing keys are excluded by `.gitignore`. Review staged files and images before each release; an ignore rule does not remove files already committed.
