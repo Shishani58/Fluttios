@@ -81,12 +81,25 @@ public enum SimulatorToolCommand {
     @Published public private(set) var devices: [SimulatorDevice] = []
     @Published public private(set) var error: String?
     @Published public private(set) var refreshing = false
-    public init() {}
+    public private(set) var currentDeviceIDs: Set<String> = []
+    private let cacheFile: URL
+    public init(cacheFile: URL? = nil) {
+        self.cacheFile =
+            cacheFile
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Fluttios/devices.json")
+        if let data = try? Data(contentsOf: self.cacheFile),
+            let cached = try? JSONDecoder().decode([SimulatorDevice].self, from: data)
+        {
+            devices = cached
+        }
+    }
     public func refresh(project: Project? = nil, globalSDK: String? = nil) async {
         guard !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
-        var discovered: [SimulatorDevice] = []
+        var simulatorDevices: [SimulatorDevice]?
+        var flutterDevices: [SimulatorDevice]?
         var failures: [String] = []
         do {
             let result = try await ToolRunner.run(
@@ -94,7 +107,7 @@ public enum SimulatorToolCommand {
             ).checked()
             struct List: Decodable { let devices: [String: [SimulatorDevice]] }
             let list = try JSONDecoder().decode(List.self, from: result.stdout)
-            discovered = list.devices.flatMap { runtime, values in
+            simulatorDevices = list.devices.flatMap { runtime, values in
                 values.filter { $0.isAvailable && runtime.contains("iOS") }.map { device in
                     var device = device
                     device.runtime = runtime.components(separatedBy: ".").last?.replacingOccurrences(of: "-", with: " ")
@@ -111,12 +124,25 @@ public enum SimulatorToolCommand {
                 sdk, ["devices", "--machine", "--device-timeout", "5"], directory: project?.path,
                 environment: FlutterSDKResolver.environment(sdk: sdk), timeout: 30
             ).checked()
-            let flutterDevices = try SimulatorDevice.flutterDevices(from: result.stdout)
-            let knownIDs = Set(discovered.map(\.id))
-            discovered += flutterDevices.filter { !knownIDs.contains($0.id) }
+            flutterDevices = try SimulatorDevice.flutterDevices(from: result.stdout)
         } catch { failures.append(L10n.text("Flutter devices: ") + error.localizedDescription) }
-        devices = discovered.sorted { $0.name < $1.name }
+        updateDevices(simulators: simulatorDevices, flutterDevices: flutterDevices)
         error = failures.isEmpty ? nil : failures.joined(separator: "\n")
+    }
+    // A failed source keeps its last list visible; only fresh discoveries can launch.
+    func updateDevices(simulators: [SimulatorDevice]?, flutterDevices: [SimulatorDevice]?) {
+        let freshDevices = (simulators ?? []) + (flutterDevices ?? [])
+        let cachedDevices = devices.filter {
+            $0.isIOSSimulator ? simulators == nil : flutterDevices == nil
+        }
+        var knownIDs = Set<String>()
+        devices = (freshDevices + cachedDevices).filter { knownIDs.insert($0.id).inserted }
+            .sorted { $0.name < $1.name }
+        currentDeviceIDs = Set(freshDevices.map(\.id))
+        // This cache is disposable; discovery remains usable if writing it fails.
+        try? FileManager.default.createDirectory(
+            at: cacheFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if let data = try? JSONEncoder().encode(devices) { try? data.write(to: cacheFile, options: .atomic) }
     }
     public func boot(_ device: SimulatorDevice) async throws {
         guard device.isIOSSimulator else { return }

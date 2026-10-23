@@ -32,6 +32,24 @@ final class LaunchModeTests: XCTestCase {
     }
     private let simulator = SimulatorDevice(udid: "SIM", name: "iPhone", state: "Booted")
     private let phone = SimulatorDevice(udid: "PHONE", name: "iPhone", state: "Подключено", isPhysical: true)
+    func testAndroidEmulatorsAndPhysicalDevicesAllowEveryLaunchMode() throws {
+        let json = Data(
+            #"[{"id":"EMULATOR","name":"Pixel emulator","targetPlatform":"android-arm64","emulator":true},{"id":"ANDROID","name":"Pixel","targetPlatform":"android-arm64","emulator":false},{"id":"IPHONE","name":"iPhone","targetPlatform":"ios","emulator":false},{"id":"SIM","name":"iPhone simulator","targetPlatform":"ios","emulator":true}]"#
+                .utf8)
+        let devices = try SimulatorDevice.flutterDevices(from: json)
+        for mode in LaunchMode.allCases {
+            var launch = LaunchConfiguration()
+            launch.setMode(mode)
+            for device in devices.prefix(3) {
+                XCTAssertTrue(mode.supports(device), "\(device.name): \(mode)")
+                XCTAssertEqual(
+                    try launch.validatedArguments(for: device),
+                    ["run", "--machine", "--" + mode.rawValue, "--target", "lib/main.dart"])
+            }
+            XCTAssertEqual(mode.supports(devices[3]), mode == .debug)
+            XCTAssertEqual(mode.supports(nil), mode == .debug)
+        }
+    }
     func testModesAndFlavorConfigurationsMatchTarget() throws {
         var launch = LaunchConfiguration()
         launch.scheme = "dev"

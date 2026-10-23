@@ -5,7 +5,7 @@ public enum LaunchMode: String, Codable, CaseIterable {
     case debug, profile, release
     public var title: String { rawValue.capitalized }
     public func supports(_ device: SimulatorDevice?) -> Bool {
-        self == .debug || (device != nil && device?.isEmulator == false)
+        self == .debug || (device != nil && device?.isIOSSimulator == false)
     }
 }
 

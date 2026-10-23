@@ -1,5 +1,14 @@
 # Changelog / История изменений
 
+## [1.0.8] — 2026-10-24
+
+- Allow Debug, Profile, and Release on Android devices and emulators, and select the next launch mode during an active session.
+  Debug, Profile и Release доступны для Android-устройств и эмуляторов; режим следующего запуска можно выбрать во время работающей сессии.
+- Cache the device list between launches, refresh it in the background, and verify cached devices before starting a session.
+  Список устройств сохраняется между запусками, обновляется в фоне и проверяется перед запуском сессии.
+- Show device discovery immediately after Run, with Android build/install progress and specific installation failure messages.
+  После Run сразу отображается поиск устройства, затем этапы сборки и установки Android и конкретные причины отказа установки.
+
 ## [1.0.5] — 2026-10-16
 
 - Redesigned settings and device picker, with grouped controls and a panel placement preview.
@@ -66,3 +75,5 @@ First public release of Fluttios. / Первый публичный релиз F
 [1.0.4]: https://github.com/Shishani58/Fluttios/tree/v1.0.4
 
 [1.0.5]: https://github.com/Shishani58/Fluttios/tree/v1.0.5
+
+[1.0.8]: https://github.com/Shishani58/Fluttios/tree/v1.0.8

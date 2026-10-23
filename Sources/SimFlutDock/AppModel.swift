@@ -76,6 +76,7 @@ import UniformTypeIdentifiers
     @Published private(set) var bootingSimulatorIDs: Set<String> = []
     @Published private(set) var simulatorBootError: String?
     @Published var message: String?
+    @Published private(set) var checkingLaunchDevice = false
     @Published private(set) var simulatorToolBusy = false
     @Published private(set) var simulatorToolResult: String?
     @Published private(set) var simulatorToolProjectID: UUID?
@@ -158,7 +159,11 @@ import UniformTypeIdentifiers
     var selectedSession: FlutterSession? { selectedSessionKey.flatMap { manager.sessions[$0] } }
     var verticalPanel: Bool { actualPanelSide?.isVertical == true }
     var panelHeight: CGFloat { verticalPanel ? 374 : horizontalPanelHeight }
-    var horizontalPanelHeight: CGFloat { selectedSession?.state.isBusy == true ? 70 : 48 }
+    var launchBusy: Bool { checkingLaunchDevice || selectedSession?.state.isBusy == true }
+    var launchProgressMessage: String? {
+        checkingLaunchDevice ? L10n.text("Searching for devices…") : selectedSession?.progressMessage
+    }
+    var horizontalPanelHeight: CGFloat { launchBusy ? 70 : 48 }
     var selectedDevice: SimulatorDevice? {
         store.selected.flatMap { device(for: $0) }
     }
@@ -181,7 +186,6 @@ import UniformTypeIdentifiers
     // Manual attachment controls panel placement, independently of the Flutter target.
     var standalonePanel: Bool { freePanel || (standaloneTarget && manualPanelWindowID == nil) }
     var launchMode: LaunchMode {
-        if let session = selectedSession, session.hasWork { return session.launchProject?.launch.mode ?? .debug }
         return store.selected?.launch.mode ?? .debug
     }
     func refreshDevices() async {
@@ -226,7 +230,7 @@ import UniformTypeIdentifiers
         if let key = selectedSessionKey { Task { await manager.foreground(key) } }
     }
     func chooseLaunchMode(_ mode: LaunchMode) {
-        guard var project = store.selected, !(selectedSession?.hasWork ?? false), mode.supports(selectedDevice) else {
+        guard var project = store.selected, mode.supports(selectedDevice) else {
             return
         }
         project.launch = project.launch.usingProjectDefaults(mode: mode)
@@ -303,36 +307,50 @@ import UniformTypeIdentifiers
         }
     }
     func run() {
+        guard !checkingLaunchDevice, selectedSession?.canRun != false else { return }
         guard !simulatorToolBusy else {
             message = L10n.text("Wait for the simulator action to finish before pressing Run.")
             return
         }
-        guard var project = store.selected else {
+        guard let selectedProject = store.selected else {
             openProject()
             return
         }
-        if let id = project.deviceID, !simulators.devices.contains(where: { $0.id == id }) {
-            message = L10n.text(
-                "The saved device is unavailable. Refresh the list and select a device in the panel. For iPhone / iPad, check the connection, trust this Mac, and enable Developer Mode."
-            )
-            return
+        message = nil
+        checkingLaunchDevice = true
+        Task {
+            defer { checkingLaunchDevice = false }
+            if simulators.refreshing || selectedDevice.map({ !simulators.currentDeviceIDs.contains($0.id) }) != false {
+                await refreshDevices()
+            }
+            guard var project = store.selected, project.id == selectedProject.id,
+                project.deviceID == selectedProject.deviceID, !simulatorToolBusy
+            else { return }
+            let currentDevices = simulators.devices.filter { simulators.currentDeviceIDs.contains($0.id) }
+            if let id = project.deviceID, !currentDevices.contains(where: { $0.id == id }) {
+                message = L10n.text(
+                    "The saved device is unavailable. Reconnect it or select another device in the panel.")
+                if let error = simulators.error { message = (message ?? "") + "\n\n" + error }
+                return
+            }
+            let device =
+                currentDevices.first { $0.id == project.deviceID }
+                ?? AutomaticDeviceSelection.device(from: currentDevices)
+            guard let device else {
+                message = L10n.text(
+                    "Select a connected device or a running emulator in the device menu."
+                )
+                if let error = simulators.error { message = (message ?? "") + "\n\n" + error }
+                return
+            }
+            // Keep an automatic launch selected even if device discovery changes order.
+            project.deviceID = device.id
+            project.deviceIsPhysical = device.isPhysical
+            project.devicePlatform = device.targetPlatform
+            project.launch = project.launch.usingProjectDefaults()
+            store.update(project)
+            manager.run(project: project, device: device, globalSDK: globalSDK)
         }
-        let device =
-            simulators.devices.first { $0.id == project.deviceID }
-            ?? AutomaticDeviceSelection.device(from: simulators.devices)
-        guard let device else {
-            message = L10n.text(
-                "Select a connected iPhone / iPad, or install an iOS Simulator in Xcode and refresh the device list in the panel."
-            )
-            return
-        }
-        // Keep an automatic launch selected even if device discovery changes order.
-        project.deviceID = device.id
-        project.deviceIsPhysical = device.isPhysical
-        project.devicePlatform = device.targetPlatform
-        project.launch = project.launch.usingProjectDefaults()
-        store.update(project)
-        manager.run(project: project, device: device, globalSDK: globalSDK)
     }
     func restart(full: Bool) {
         guard let key = selectedSessionKey, let session = selectedSession,

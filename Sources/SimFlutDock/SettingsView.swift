@@ -307,7 +307,7 @@ struct SettingsView: View {
     }
 
     private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.7"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.8"
     }
 
     private var projectSettings: some View {
@@ -485,7 +485,7 @@ struct SettingsView: View {
                         Text(
                             L10n.text(
                                 "Version {0} · Build {1}", appVersion,
-                                Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "5")
+                                Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "9")
                         )
                         .font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled)
                     }

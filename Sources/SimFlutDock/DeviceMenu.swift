@@ -53,7 +53,6 @@ private struct DevicePicker: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var canSelectDevice: Bool { model.store.selected != nil }
-    private var canEditMode: Bool { canSelectDevice && model.selectedSession?.hasWork != true }
     private var devices: [SimulatorDevice] {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
         return model.simulators.devices.filter {
@@ -172,7 +171,8 @@ private struct DevicePicker: View {
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .disabled(!canEditMode || !mode.supports(model.selectedDevice))
+                            .disabled(!canSelectDevice || !mode.supports(model.selectedDevice))
+                            .accessibilityLabel(mode.title)
                             .accessibilityValue(
                                 model.launchMode == mode ? L10n.text("Selected") : L10n.text("Not selected"))
                         }
@@ -180,6 +180,11 @@ private struct DevicePicker: View {
                     .padding(2).background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 7))
                     .accessibilityLabel(L10n.text("Launch Mode"))
                 }.padding(.bottom, 10)
+                if let session = model.selectedSession, session.hasWork,
+                    session.launchProject?.launch.mode != model.launchMode
+                {
+                    notice(L10n.text("To apply the selected mode, press Stop, then Run."), symbol: "info.circle")
+                }
                 HStack {
                     Button {
                         model.chooseDevice(nil)

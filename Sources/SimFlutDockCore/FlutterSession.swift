@@ -31,6 +31,7 @@ import Foundation
     private var scopedConsole = false
     private var consoleReady = false
     private var flutterStarted = false
+    private var launchFailureReason: String?
     private var client: MachineClient?
     private var operation: Task<Void, Never>?
     private var escalation: Task<Void, Never>?
@@ -53,6 +54,20 @@ import Foundation
     }
     public func append(_ text: String, error: Bool = false) {
         guard !text.isEmpty else { return }
+        if state == .building {
+            if text.contains("INSTALL_FAILED_VERSION_DOWNGRADE") {
+                launchFailureReason = L10n.text(
+                    "Android rejected an older app version. Increase the project's versionCode above the installed version, then press Run."
+                )
+            } else if text.contains("INSTALL_FAILED_USER_RESTRICTED") {
+                launchFailureReason = L10n.text(
+                    "Android did not allow installation. Unlock the device and confirm the installation prompt, then press Run."
+                )
+            }
+            if text.hasPrefix("Running Gradle task") || (text.hasPrefix("Installing ") && text.contains(".apk")) {
+                updateProgressTitle(text)
+            }
+        }
         let entry = LogEntry(String(decoding: text.utf8.prefix(16_384), as: UTF8.self), isError: error)
         logBytes += entry.text.utf8.count
         var removed = 0
@@ -74,6 +89,7 @@ import Foundation
         intentionalStop = false
         state = .booting
         error = nil
+        launchFailureReason = nil
         bundleID = nil
         resetProgress(L10n.text("Checking project"))
     }
@@ -98,9 +114,15 @@ import Foundation
             progressOperations.removeAll { $0.id == id }
             progressOperations.append((id, message))
         }
-        let latest = progressOperations.last?.message ?? progressFallback
+        updateProgressTitle(progressOperations.last?.message ?? progressFallback)
+    }
+    private func updateProgressTitle(_ latest: String?) {
         if latest?.hasPrefix("Running Xcode build") == true {
             progressMessage = L10n.text("Building in Xcode")
+        } else if latest?.hasPrefix("Running Gradle task") == true {
+            progressMessage = L10n.text("Building Android app")
+        } else if latest?.hasPrefix("Installing ") == true && latest?.contains(".apk") == true {
+            progressMessage = L10n.text("Installing on Android device")
         } else if latest?.hasPrefix("Installing and launching") == true {
             progressMessage = L10n.text("Installing and launching")
         } else {
@@ -154,6 +176,7 @@ import Foundation
         errorParser = .init()
         appID = nil
         error = nil
+        launchFailureReason = nil
         intentionalStop = false
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = args
@@ -308,6 +331,7 @@ import Foundation
             startTimeout?.cancel()
             state = .running
             resetProgress()
+            launchFailureReason = nil
         }
     }
     public func restart(full: Bool) {
@@ -429,7 +453,9 @@ import Foundation
             error = nil
         } else {
             state = status == 0 ? .disconnected : .error
-            error = L10n.text("Flutter exited (code {0}). Check the logs and press Run.", "\(status)")
+            error =
+                (status != 0 ? launchFailureReason : nil)
+                ?? L10n.text("Flutter exited (code {0}). Check the logs and press Run.", "\(status)")
             append(error!, error: true)
         }
         append(L10n.text("Process exited: {0}.", "\(status)"))

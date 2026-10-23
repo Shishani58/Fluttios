@@ -4,6 +4,55 @@ import XCTest
 @testable import SimFlutDockCore
 
 final class SessionTests: XCTestCase {
+    @MainActor func testAndroidBuildStagesAndInstallationFailuresAreVisible() async throws {
+        let device = SimulatorDevice(
+            udid: "ANDROID", name: "Pixel", state: "Available", targetPlatform: "android-arm64", isEmulator: false)
+        var project = Project(name: "Android", path: "/tmp")
+        project.launch.setMode(.release)
+        let session = FlutterSession(projectID: project.id)
+        for failure in ["INSTALL_FAILED_VERSION_DOWNGRADE", "INSTALL_FAILED_USER_RESTRICTED", "other failure"] {
+            try session.start(
+                executable: "/usr/bin/false", project: project, device: device, bundleID: "com.test.android",
+                captureDartConsole: false)
+            session.handle(
+                .message([
+                    "event": "app.progress",
+                    "params": ["id": "gradle", "message": "Running Gradle task 'assembleRelease'..."],
+                ]))
+            XCTAssertEqual(session.progressMessage, L10n.text("Building Android app"))
+            session.handle(
+                .message([
+                    "event": "app.log",
+                    "params": ["log": "Installing build/app/outputs/flutter-apk/app-release.apk..."],
+                ]))
+            XCTAssertEqual(session.progressMessage, L10n.text("Installing on Android device"))
+            // Flutter can retry after a downgrade, then fail for a different reason.
+            session.handle(.text("Failure [INSTALL_FAILED_VERSION_DOWNGRADE]"))
+            if failure == "other failure" {
+                session.handle(.message(["event": "app.started", "params": [:]]))
+            }
+            session.handle(.text("Failure [\(failure)]"))
+            try await wait { !session.isAlive }
+            XCTAssertEqual(session.state, .error)
+            switch failure {
+            case "INSTALL_FAILED_VERSION_DOWNGRADE":
+                XCTAssertEqual(
+                    session.error,
+                    L10n.text(
+                        "Android rejected an older app version. Increase the project's versionCode above the installed version, then press Run."
+                    ))
+            case "INSTALL_FAILED_USER_RESTRICTED":
+                XCTAssertEqual(
+                    session.error,
+                    L10n.text(
+                        "Android did not allow installation. Unlock the device and confirm the installation prompt, then press Run."
+                    ))
+            default:
+                XCTAssertEqual(
+                    session.error, L10n.text("Flutter exited (code {0}). Check the logs and press Run.", "1"))
+            }
+        }
+    }
     @MainActor func testRestartFailureCannotRestoreRunningStateAfterDisconnect() async throws {
         let script = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".py")
         defer { try? FileManager.default.removeItem(at: script) }
@@ -283,6 +332,38 @@ final class SessionTests: XCTestCase {
             session.stop()
             try await wait { session.canRun }
             XCTAssertTrue(session.logs.contains { $0.text == "app.stopFalse" })
+        }
+    }
+    @MainActor func testSelectedModeAppliesAfterStopWithoutChangingActiveSession() async throws {
+        let script = try fixture()
+        defer { try? FileManager.default.removeItem(at: script) }
+        let device = SimulatorDevice(
+            udid: "ANDROID", name: "Pixel", state: "Booted", targetPlatform: "android-arm64", isEmulator: true)
+        var project = Project(name: "Android", path: "/tmp")
+        let session = FlutterSession(projectID: project.id)
+        defer { session.stop() }
+        try session.start(
+            executable: script.path, project: project, device: device, bundleID: "com.test.mode",
+            captureDartConsole: false)
+        try await wait { session.state == .running }
+        for mode in [LaunchMode.profile, .release, .debug] {
+            project.launch = project.launch.usingProjectDefaults(mode: mode)
+            XCTAssertNotEqual(session.launchProject?.launch.mode, mode)
+            XCTAssertEqual(session.canRestart, session.launchProject?.launch.mode == .debug)
+            session.stop()
+            try await wait { session.canRun }
+            session.clearLogs()
+            try session.start(
+                executable: script.path, project: project, device: device, bundleID: "com.test.mode",
+                captureDartConsole: false)
+            try await wait { session.state == .running }
+            XCTAssertEqual(session.launchProject?.launch.mode, mode)
+            XCTAssertEqual(session.canRestart, mode == .debug)
+            let argumentsLog = try XCTUnwrap(session.logs.first { $0.text.hasPrefix("arguments:") })
+            let args = try JSONDecoder().decode(
+                [String].self, from: Data(argumentsLog.text.dropFirst("arguments:".count).utf8))
+            XCTAssertTrue(args.contains("--" + mode.rawValue))
+            XCTAssertEqual(Array(args.suffix(2)), ["-d", device.id])
         }
     }
     @MainActor func testPreparationCancellationAndLogLimit() async throws {

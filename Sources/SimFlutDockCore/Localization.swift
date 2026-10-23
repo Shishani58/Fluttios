@@ -308,9 +308,21 @@ public enum L10n {
         "Action in progress…": "Выполняется действие…",
         "Select device and launch mode": "Выбрать устройство и режим запуска",
         "Device and launch mode": "Устройство и режим запуска",
+        "The saved device is unavailable. Reconnect it or select another device in the panel.":
+            "Сохранённое устройство недоступно. Подключите его заново или выберите другое устройство на панели.",
+        "Select a connected device or a running emulator in the device menu.":
+            "Выберите подключённое устройство или запущенный эмулятор в меню устройств.",
         "Device and Launch": "Устройство и запуск",
         "Close device picker": "Закрыть выбор устройства",
         "Launch Mode": "Режим запуска",
+        "Building Android app": "Сборка Android-приложения",
+        "Installing on Android device": "Установка на Android-устройство",
+        "Android rejected an older app version. Increase the project's versionCode above the installed version, then press Run.":
+            "Android отклонил более старую версию приложения. Увеличьте versionCode проекта выше установленной версии, затем нажмите Run.",
+        "Android did not allow installation. Unlock the device and confirm the installation prompt, then press Run.":
+            "Android не разрешил установку. Разблокируйте устройство и подтвердите запрос на установку, затем нажмите Run.",
+        "To apply the selected mode, press Stop, then Run.":
+            "Чтобы применить выбранный режим, нажмите Stop, затем Run.",
         "Only Debug is available on simulators.": "Для симулятора доступен только Debug.",
         "Debug — debugging · Profile — performance · Release — production":
             "Debug — отладка · Profile — замеры · Release — релиз",

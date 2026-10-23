@@ -33,10 +33,14 @@ struct SessionButtons: View {
                 Label {
                     Text("Run")
                 } icon: {
-                    sessionIcon("play", regular: "play.fill")
+                    if model.checkingLaunchDevice {
+                        ProgressView().controlSize(.small).frame(width: 18, height: 18)
+                    } else {
+                        sessionIcon("play", regular: "play.fill")
+                    }
                 }.foregroundStyle(.green)
             }
-            .disabled(model.selectedSession.map { !$0.canRun } ?? false)
+            .disabled(model.checkingLaunchDevice || (model.selectedSession.map { !$0.canRun } ?? false))
             .help(L10n.text("Run — start a new {0} session on the selected device", "\(model.launchMode.title)"))
             Button {
                 model.restart(full: false)
@@ -97,7 +101,7 @@ struct PanelView: View {
     @State private var showingError = false
     private var hasError: Bool { model.message != nil || model.selectedSession?.error != nil }
     private var busy: Bool {
-        model.selectedSession?.state.isBusy ?? false
+        model.launchBusy
     }
     private var hubBackground: Color {
         colorScheme == .dark
@@ -216,7 +220,7 @@ struct PanelView: View {
                         }
                         .modifier(PanelControlSurface(bordered: true))
                         .accessibilityLabel(L10n.text("Panel settings and menu")).help(
-                            model.selectedSession?.progressMessage ?? model.selectedSession?.state.title
+                            model.launchProgressMessage ?? model.selectedSession?.state.title
                                 ?? L10n.text("Panel settings and menu")
                         )
                         .popover(isPresented: $showingError, arrowEdge: .bottom) {
@@ -244,12 +248,12 @@ struct PanelView: View {
                 HStack(spacing: 10) {
                     Text(
                         L10n.display(
-                            model.selectedSession?.progressMessage ?? model.selectedSession?.state.title
+                            model.launchProgressMessage ?? model.selectedSession?.state.title
                                 ?? L10n.text("Working…"))
                     )
                     .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .help(L10n.display(model.selectedSession?.progressMessage ?? ""))
+                    .help(L10n.display(model.launchProgressMessage ?? ""))
                     ProgressView().progressViewStyle(.linear).frame(width: 90)
                         .accessibilityLabel(L10n.text("Operation in progress; exact percentage unavailable"))
                 }.padding(.horizontal, 12).padding(.bottom, 5).frame(height: 22)
@@ -260,6 +264,7 @@ struct PanelView: View {
         .background(hubBackground, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5))
         .onChange(of: model.message) { _, message in if message != nil { showingError = true } }
+        .onChange(of: model.checkingLaunchDevice) { _, checking in if checking { showingError = false } }
         .onChange(of: model.selectedSession?.error) { _, error in if error != nil { showingError = true } }
     }
 }
