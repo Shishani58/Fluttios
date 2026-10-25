@@ -15,6 +15,8 @@ import Foundation
     @Published public private(set) var isAlive = false
     @Published public private(set) var preparing = false
     @Published public private(set) var progressMessage: String?
+    @Published public private(set) var devToolsURL: URL?
+    public private(set) var flutterVersion: String?
     private var progressOperations: [(id: String, message: String)] = []
     private var progressFallback: String?
     public private(set) var device: SimulatorDevice?
@@ -41,6 +43,7 @@ import Foundation
     /// Identifies this launch, including preparation, independently of the reusable session.
     public var launchID: UUID { generation }
     public var canRun: Bool { !isAlive && !preparing && state != .stopping }
+    public var canRerun: Bool { isAlive && [.running, .error, .disconnected].contains(state) }
     public var canStop: Bool {
         (isAlive || preparing) && state != .stopping && state != .reloading && state != .restarting
     }
@@ -84,7 +87,16 @@ import Foundation
         logs.removeAll()
         logBytes = 0
     }
+    public var canOpenDevTools: Bool {
+        isAlive && [.running, .reloading, .restarting].contains(state) && devToolsURL != nil
+    }
+    public func setFlutterVersion(_ output: String) {
+        let value = try? JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any]
+        flutterVersion = value?["flutterVersion"] as? String
+    }
     public func prepare(project: Project, device: SimulatorDevice) {
+        devToolsURL = nil
+        flutterVersion = nil
         generation = UUID()
         launchProject = project
         self.device = device
@@ -134,6 +146,7 @@ import Foundation
     }
     public func reserve(bundleID: String) { self.bundleID = bundleID }
     public func launchFailed(_ failure: Error) {
+        devToolsURL = nil
         preparing = false
         operation = nil
         resetProgress()
@@ -150,6 +163,7 @@ import Foundation
         executable: String, project: Project, device: SimulatorDevice, bundleID: String, captureDartConsole: Bool = true
     ) throws {
         guard !isAlive, state != .stopping else { throw CancellationError() }
+        devToolsURL = nil
         signal(SIGPIPE, SIG_IGN)
         // Physical iOS devices can report startPaused=false. Use Flutter's own
         // log stream there, without waiting for a paused isolate or a VM port.
@@ -255,6 +269,10 @@ import Foundation
             if let incoming = params["appId"] as? String, let appID, incoming != appID { return }
             switch message["event"] as? String {
             case "app.start": appID = params["appId"] as? String
+            case "app.devTools":
+                guard isAlive, ![.stopping, .disconnected].contains(state),
+                    let appID, params["appId"] as? String == appID else { return }
+                devToolsURL = DevToolsLink.url(from: params["uri"] as? String)
             case "app.debugPort":
                 guard scopedConsole, dartConsole == nil, let uri = params["wsUri"] as? String,
                     let url = URL(string: uri)
@@ -313,6 +331,7 @@ import Foundation
                 append(params["message"] as? String ?? "", error: params["level"] as? String == "error")
             case "app.warning": append(params["warning"] as? String ?? "")
             case "app.stop":
+                devToolsURL = nil
                 appID = nil
                 client?.close()
                 startTimeout?.cancel()
@@ -373,6 +392,7 @@ import Foundation
         return operation
     }
     public func stop() {
+        devToolsURL = nil
         guard hasWork, state != .stopping else { return }
         let previousOperation = operation
         let waitForCommand = state == .reloading || state == .restarting
@@ -423,6 +443,7 @@ import Foundation
     }
     private func terminated(status: Int32, generation: UUID) {
         guard self.generation == generation else { return }
+        devToolsURL = nil
         // A compiler/log reader can outlive its parent and keep hundreds of MB
         // and the output pipes alive. Reap only the group owned by this launch.
         if let group = ownedProcessGroup { kill(-group, SIGKILL) }

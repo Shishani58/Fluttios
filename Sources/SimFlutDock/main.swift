@@ -16,7 +16,7 @@ import SwiftUI
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         model = AppModel()
-        let control = SessionControl(manager: model.manager)
+        let control = SessionControl(manager: model.manager, store: model.store, globalSDK: { [weak model] in model?.globalSDK })
         let server = LocalControlServer { data in await control.handle(data) }
         do {
             try server.start()

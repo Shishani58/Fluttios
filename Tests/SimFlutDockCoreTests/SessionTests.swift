@@ -240,6 +240,74 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(manager.sessions.count, 2)
         try await wait { !manager.hasActiveSessions }
     }
+    @MainActor func testRerunWaitsForExitIgnoresDuplicateClicksAndPreservesOtherDevice() async throws {
+        let script = try fixture()
+        defer { try? FileManager.default.removeItem(at: script) }
+        let manager = SessionManager(simulators: SimulatorService())
+        // The replacement intentionally fails validation after stopping the old process.
+        // This also checks that a failed rebuild releases the Rerun reservation.
+        let project = Project(name: "Rerun", path: "/nonexistent/SimFlutDock-rerun-test")
+        let first = SimulatorDevice(udid: "D1", name: "First", state: "Booted")
+        let second = SimulatorDevice(udid: "D2", name: "Second", state: "Booted")
+        let key = SessionKey(projectID: project.id, deviceID: first.id)
+        let a = manager.session(for: project.id, deviceID: first.id)
+        let b = manager.session(for: project.id, deviceID: second.id)
+        var original = project
+        original.path = "/tmp"
+        try a.start(
+            executable: script.path, project: original, device: first, bundleID: "com.test.rerun",
+            captureDartConsole: false)
+        try b.start(
+            executable: script.path, project: original, device: second, bundleID: "com.test.rerun",
+            captureDartConsole: false)
+        defer { manager.stopAll() }
+        try await wait { a.state == .running && b.state == .running }
+        let otherLaunch = b.launchID
+        var preparations = 0
+        let observation = a.$preparing.sink { preparing in
+            if preparing {
+                preparations += 1
+                XCTAssertFalse(a.isAlive, "Rebuild must wait for the previous process to exit")
+            }
+        }
+        manager.rerun(project: project, device: first, globalSDK: nil)
+        XCTAssertEqual(a.state, .stopping)
+        XCTAssertTrue(manager.rerunningIDs.contains(key))
+        manager.rerun(project: project, device: first, globalSDK: nil)
+        manager.run(project: project, device: first, globalSDK: nil)
+        try await wait { a.state == .error && !manager.rerunningIDs.contains(key) }
+        withExtendedLifetime(observation) {}
+        XCTAssertEqual(preparations, 1)
+        XCTAssertTrue(a.canRun)
+        XCTAssertFalse(a.canRerun)
+        XCTAssertEqual(a.device?.id, "D1")
+        XCTAssertEqual(a.launchProject?.path, "/nonexistent/SimFlutDock-rerun-test")
+        XCTAssertTrue(b.isAlive)
+        XCTAssertEqual(b.launchID, otherLaunch)
+        XCTAssertFalse(b.logs.contains { $0.text.hasPrefix("app.stop") })
+        await manager.waitForStop()
+    }
+    @MainActor func testShutdownCancelsQueuedRerun() async throws {
+        let script = try fixture()
+        defer { try? FileManager.default.removeItem(at: script) }
+        let manager = SessionManager(simulators: SimulatorService())
+        let project = Project(name: "Shutdown", path: "/tmp")
+        let device = SimulatorDevice(udid: "D", name: "Test", state: "Booted")
+        let session = manager.session(for: project.id, deviceID: device.id)
+        try session.start(
+            executable: script.path, project: project, device: device, bundleID: "com.test.shutdown",
+            captureDartConsole: false)
+        defer { manager.stopAll() }
+        try await wait { session.state == .running }
+        let oldLaunch = session.launchID
+        manager.rerun(project: project, device: device, globalSDK: nil)
+        await manager.waitForStop()
+        XCTAssertTrue(manager.rerunningIDs.isEmpty, "Shutdown must drain queued launches before it can be cancelled")
+        manager.cancelShutdown()
+        XCTAssertEqual(session.state, .ready)
+        XCTAssertEqual(session.launchID, oldLaunch)
+        XCTAssertFalse(manager.hasActiveSessions)
+    }
     @MainActor func testSameProjectHasIndependentSessionsPerDevice() async throws {
         let script = try fixture()
         defer { try? FileManager.default.removeItem(at: script) }

@@ -16,7 +16,7 @@ MAX_INPUT = 64 * 1024
 MAX_RESPONSE = 4 * 1024 * 1024
 DEFAULT_SOCKET = os.path.expanduser("~/Library/Application Support/Fluttios/mcp/control.sock")
 INSTRUCTIONS = (
-    "Manage existing Fluttios sessions only. List sessions, then inspect the target "
+    "Manage explicit saved Fluttios projects and devices. Before launch list_projects and list_devices; start_session uses the saved configuration. List sessions, then inspect the target "
     "session and available_actions before changing it. Use its current session_id and "
     "launch_id. Supply a unique request_id per intended mutation; reuse that same "
     "request_id when retrying the same operation. Only the latest 128 accepted requests "
@@ -63,6 +63,19 @@ TOOLS = [
          MUTATION, list(MUTATION), read_only=False, destructive=True),
     tool("stop_session", "Stop this launch and await process termination.",
          MUTATION, list(MUTATION), read_only=False, destructive=True),
+    tool("list_projects", "List saved projects, launch configuration summaries and saved deep links.", {}, []),
+    tool("list_devices", "Discover current devices for an explicit saved project.",
+         {"project_id": ID}, ["project_id"]),
+    tool("start_session", "Start the saved project configuration on an explicit discovered device. Poll get_session until running or failed; started means preparation accepted.",
+         {"project_id": ID, "device_id": {"type": "string", "minLength": 1, "maxLength": 8192},
+          "request_id": MUTATION["request_id"]}, ["project_id", "device_id", "request_id"], read_only=False),
+    tool("rerun_session", "Stop, rebuild and relaunch this exact session using the saved project configuration. Poll the returned launch until running. Discards application state.",
+         MUTATION, list(MUTATION), read_only=False, destructive=True),
+    tool("open_deep_link", "Open a URL on this session's iOS Simulator or Android device. OS link routing may open another application.",
+         {**MUTATION, "url": {"type": "string", "minLength": 1, "maxLength": 8192}},
+         [*MUTATION, "url"], read_only=False),
+    tool("take_screenshot", "Capture this session's iOS Simulator or Android device screen, including any visible app. Returns a bounded JPEG image and temporary local path (max 1600 px, 1 MB).",
+         MUTATION, list(MUTATION), read_only=False),
 ]
 
 
@@ -89,7 +102,7 @@ def validate_arguments(name, arguments):
     if set(arguments) - set(schema["properties"]) or set(schema["required"]) - set(arguments):
         invalid("Unexpected or missing tool arguments")
     for key, value in arguments.items():
-        if key in ("session_id", "launch_id", "cursor"):
+        if key in ("session_id", "launch_id", "cursor", "project_id"):
             try:
                 if not isinstance(value, str) or str(uuid.UUID(value)).lower() != value.lower():
                     invalid("Session, launch and cursor identifiers must be UUIDs")
@@ -98,6 +111,15 @@ def validate_arguments(name, arguments):
         elif key == "limit":
             if type(value) is not int or not 1 <= value <= 200:
                 invalid("limit must be an integer from 1 to 200")
+        elif key in ("device_id", "url"):
+            if not isinstance(value, str) or not value.strip():
+                invalid("Expected a nonempty device identifier or URL")
+            try:
+                if (len(value.encode("utf-8")) > 8192
+                        or any(ord(character) < 32 or ord(character) == 127 for character in value)):
+                    invalid("Device identifiers and URLs must fit 8192 UTF-8 bytes without controls")
+            except UnicodeError:
+                invalid("Device identifiers and URLs must be valid UTF-8")
         elif key == "request_id":
             if not isinstance(value, str) or not value.strip():
                 invalid("request_id must contain 1 to 128 UTF-8 bytes")

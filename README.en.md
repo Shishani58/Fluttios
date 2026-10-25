@@ -10,7 +10,7 @@ A native macOS utility to run Flutter projects, use Hot Reload and read logs wit
 
 ## Install
 
-[**Download SimFlutDock 1.0.9 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.9/SimFlutDock-1.0.9.dmg)
+[**Download SimFlutDock 1.0.10 (.dmg)**](https://github.com/Shishani58/Fluttios/releases/download/v1.0.10/SimFlutDock-1.0.10.dmg)
 
 Requires **macOS 14+**, **Flutter SDK** and full **Xcode**. Supports Apple Silicon and Intel. Open the DMG and drag the app to **Applications**.
 
@@ -25,7 +25,8 @@ Update through **Settings → General → App Updates**. The app verifies SHA-25
 - **Run, Hot Reload, Hot Restart and Stop**, with an independent session for each project and device. Switching devices changes the session being controlled while other sessions keep running.
 - A panel beside **Simulator / Device Hub**, or a floating panel.
 - Device and launch mode selection, with **FVM** support.
-- Logs, saved deep links and quick access to project and app data folders.
+- Searchable logs, error filtering, pause/resume scrolling, source links and diagnostic report copying.
+- One-click DevTools for the selected session, saved deep links and quick access to project and app data folders.
 - English and Russian UI, light and dark appearance.
 
 ## Quick start
@@ -34,11 +35,11 @@ Update through **Settings → General → App Updates**. The app verifies SHA-25
 2. Select a device and press **Run**. Use **Reload** after Dart changes, or **Restart** to reset state.
 3. To attach the panel, enable SimFlutDock under **System Settings → Privacy & Security → Accessibility**.
 
-Hot Reload and Hot Restart require Debug mode. After native code or plugin changes, use **Stop → Run**.
+Hot Reload and Hot Restart require Debug mode. After native code or plugin changes, use **Rerun**: the active session’s Run button stops it, rebuilds, and launches again on the same device.
 
 ### AI session control (MCP)
 
-AI clients can list sessions, read state and logs, and use **Hot Reload**, **Hot Restart**, and **Stop**. Open SimFlutDock and start a Flutter session, then connect Codex (Python 3 required):
+AI clients can discover projects and devices, launch with saved settings, read state and logs, use **Hot Reload**, **Hot Restart**, **Rerun**, and **Stop**, open deep links, and take screenshots. Open SimFlutDock, then connect Codex (Python 3 required):
 
 ```bash
 codex mcp add fluttios -- python3 /Applications/SimFlutDock.app/Contents/Resources/fluttios-mcp.py

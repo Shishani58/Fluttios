@@ -15,7 +15,9 @@ struct SessionButtons: View {
         }
         .disabled(
             model.manager.shuttingDown
-                || (model.selectedSessionKey.map { model.manager.foregroundIDs.contains($0) } ?? false))
+                || (model.selectedSessionKey.map {
+                    model.manager.foregroundIDs.contains($0) || model.manager.rerunningIDs.contains($0)
+                } ?? false))
     }
     @ViewBuilder
     private func sessionIcon(_ symbol: String, regular: String) -> some View {
@@ -25,23 +27,41 @@ struct SessionButtons: View {
             Image(systemName: regular)
         }
     }
+    private var rerunIcon: some View {
+        ZStack(alignment: .topLeading) {
+            Image(systemName: "play.fill")
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 14, height: 14)
+            Image(systemName: "arrow.clockwise")
+                .font(.system(size: 9, weight: .medium))
+                .frame(width: 9, height: 9)
+                .offset(x: 9, y: 9)
+        }
+        .frame(width: 18, height: 18)
+        .accessibilityHidden(true)
+    }
     private var buttons: some View {
         Group {
             Button {
                 model.run()
             } label: {
                 Label {
-                    Text("Run")
+                    Text(model.selectedSession?.hasWork == true ? "Rerun" : "Run")
                 } icon: {
                     if model.checkingLaunchDevice {
                         ProgressView().controlSize(.small).frame(width: 18, height: 18)
+                    } else if model.selectedSession?.hasWork == true {
+                        rerunIcon
                     } else {
                         sessionIcon("play", regular: "play.fill")
                     }
                 }.foregroundStyle(.green)
             }
-            .disabled(model.checkingLaunchDevice || (model.selectedSession.map { !$0.canRun } ?? false))
-            .help(L10n.text("Run — start a new {0} session on the selected device", "\(model.launchMode.title)"))
+            .disabled(!model.canRunOrRerun)
+            .help(
+                model.selectedSession?.hasWork == true
+                    ? L10n.text("Rerun — stop, rebuild and launch the selected session")
+                    : L10n.text("Run — start a new {0} session on the selected device", "\(model.launchMode.title)"))
             Button {
                 model.restart(full: false)
             } label: {
@@ -63,7 +83,7 @@ struct SessionButtons: View {
                 }.foregroundStyle(.green)
             }
             .disabled(!(model.selectedSession?.canRestart ?? false))
-            .help(L10n.text("Hot Restart — reset Dart state. After native code changes, use Stop and Run."))
+            .help(L10n.text("Hot Restart — reset Dart state. After native code changes, use Rerun."))
             Button {
                 model.selectedSession?.stop()
             } label: {
@@ -112,10 +132,10 @@ struct PanelView: View {
             ? AnyLayout(VStackLayout(spacing: PanelMetrics.groupSpacing))
             : AnyLayout(HStackLayout(spacing: narrowPanel ? 4 : PanelMetrics.groupSpacing))
     }
-    private var narrowPanel: Bool { !model.verticalPanel && model.panelWidth < 380 }
+    private var narrowPanel: Bool { !model.verticalPanel && model.panelWidth < 400 }
     private var controlWidth: CGFloat {
-        // Eight controls, five group gaps, two drag separators and outer insets.
-        narrowPanel ? min(PanelMetrics.controlSize, max(24, (model.panelWidth - 60) / 8)) : PanelMetrics.controlSize
+        // Nine controls, six group gaps, two drag separators and outer insets.
+        narrowPanel ? min(PanelMetrics.controlSize, max(24, (model.panelWidth - 68) / 9)) : PanelMetrics.controlSize
     }
     private var blockSeparator: some View {
         Group {
@@ -160,6 +180,15 @@ struct PanelView: View {
                     .buttonStyle(PanelButtonStyle())
                     .accessibilityLabel(L10n.text("Show logs for the selected project"))
                     .help(L10n.text("Show logs for the selected project"))
+                    Button {
+                        model.openDevTools()
+                    } label: {
+                        PanelIcon(symbol: "wrench.and.screwdriver").foregroundStyle(.purple)
+                    }
+                    .buttonStyle(PanelButtonStyle())
+                    .disabled(!model.canOpenDevTools)
+                    .accessibilityLabel(L10n.text("Open DevTools for the selected session"))
+                    .help(L10n.text("Open DevTools for the selected session"))
                     Color.clear
                         .frame(width: controlWidth, height: PanelMetrics.controlHeight)
                         .overlay {
@@ -243,7 +272,7 @@ struct PanelView: View {
             }
             .environment(\.panelControlWidth, controlWidth)
             .padding(model.verticalPanel ? .vertical : .horizontal, PanelMetrics.inset)
-            .frame(width: model.panelWidth, height: model.verticalPanel ? 374 : PanelMetrics.rowHeight)
+            .frame(width: model.panelWidth, height: model.verticalPanel ? 416 : PanelMetrics.rowHeight)
             if busy && !model.verticalPanel {
                 HStack(spacing: 10) {
                     Text(

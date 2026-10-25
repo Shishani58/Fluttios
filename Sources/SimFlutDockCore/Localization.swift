@@ -93,6 +93,20 @@ public enum L10n {
         }
     }()
     static let russian: [String: String] = [
+        "Error report": "Отчёт об ошибке",
+        "Could not open DevTools in the browser.": "Не удалось открыть DevTools в браузере.",
+        "Copy error report": "Скопировать отчёт об ошибке",
+        "Search logs": "Поиск по логам",
+        "Errors only": "Только ошибки",
+        "Pause scrolling": "Приостановить прокрутку",
+        "Resume scrolling": "Продолжить прокрутку",
+        "Open source in": "Открывать исходники в",
+        "Default editor": "Редактор по умолчанию",
+        "No logs yet": "Логов пока нет",
+        "No matching logs": "Нет подходящих записей",
+        "Unknown": "Неизвестно",
+        "Logs": "Логи",
+        "Open DevTools for the selected session": "Открыть DevTools выбранной сессии",
         "Checks at launch, at most once a day. A manual check also downloads the update.":
             "Проверка при запуске, не чаще раза в сутки. При ручной проверке обновление также скачивается.",
         "The update will be downloaded and prepared automatically. You choose when to quit and install it.":
@@ -321,8 +335,8 @@ public enum L10n {
             "Android отклонил более старую версию приложения. Увеличьте versionCode проекта выше установленной версии, затем нажмите Run.",
         "Android did not allow installation. Unlock the device and confirm the installation prompt, then press Run.":
             "Android не разрешил установку. Разблокируйте устройство и подтвердите запрос на установку, затем нажмите Run.",
-        "To apply the selected mode, press Stop, then Run.":
-            "Чтобы применить выбранный режим, нажмите Stop, затем Run.",
+        "To apply the selected mode, press Rerun.":
+            "Чтобы применить выбранный режим, нажмите Rerun.",
         "Only Debug is available on simulators.": "Для симулятора доступен только Debug.",
         "Debug — debugging · Profile — performance · Release — production":
             "Debug — отладка · Profile — замеры · Release — релиз",
@@ -350,10 +364,12 @@ public enum L10n {
         "Start simulator {0}": "Запустить симулятор {0}",
         "Unpin {0}": "Открепить {0}",
         "Pin {0}": "Закрепить {0}",
+        "Rerun — stop, rebuild and launch the selected session":
+            "Rerun — остановить, пересобрать и запустить выбранную сессию",
         "Run — start a new {0} session on the selected device": "Run — новый запуск в {0} на выбранном устройстве",
         "Hot Reload — preserve Dart state": "Hot Reload — сохранить состояние Dart",
-        "Hot Restart — reset Dart state. After native code changes, use Stop and Run.":
-            "Hot Restart — сбросить состояние Dart. После изменений нативного кода используйте Stop и Run.",
+        "Hot Restart — reset Dart state. After native code changes, use Rerun.":
+            "Hot Restart — сбросить состояние Dart. После изменений нативного кода используйте Rerun.",
         "Stop — stop only the selected session": "Stop — остановить только выбранную сессию",
         "Drag the panel using the space between buttons": "Перетащите панель за свободное место между кнопками",
         "Show logs for the selected project": "Показать логи выбранного проекта",

@@ -183,7 +183,7 @@ private struct DevicePicker: View {
                 if let session = model.selectedSession, session.hasWork,
                     session.launchProject?.launch.mode != model.launchMode
                 {
-                    notice(L10n.text("To apply the selected mode, press Stop, then Run."), symbol: "info.circle")
+                    notice(L10n.text("To apply the selected mode, press Rerun."), symbol: "info.circle")
                 }
                 HStack {
                     Button {

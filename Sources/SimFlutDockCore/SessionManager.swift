@@ -14,13 +14,15 @@ public struct SessionKey: Hashable {
 @MainActor public final class SessionManager: ObservableObject {
     @Published public private(set) var shuttingDown = false
     @Published public private(set) var foregroundIDs: Set<SessionKey> = []
+    @Published public private(set) var rerunningIDs: Set<SessionKey> = []
     @Published public private(set) var sessions: [SessionKey: FlutterSession] = [:]
     private var observations: [SessionKey: AnyCancellable] = [:]
     public let simulators: SimulatorService
     public init(simulators: SimulatorService) { self.simulators = simulators }
-    public var hasActiveSessions: Bool { sessions.values.contains { $0.hasWork } }
+    public var hasActiveSessions: Bool { !rerunningIDs.isEmpty || sessions.values.contains { $0.hasWork } }
     public func hasActiveSessions(for projectID: UUID) -> Bool {
-        sessions.contains { $0.key.projectID == projectID && $0.value.hasWork }
+        rerunningIDs.contains { $0.projectID == projectID }
+            || sessions.contains { $0.key.projectID == projectID && $0.value.hasWork }
     }
     public func session(for projectID: UUID, deviceID: String) -> FlutterSession {
         let key = SessionKey(projectID: projectID, deviceID: deviceID)
@@ -36,7 +38,8 @@ public struct SessionKey: Hashable {
         }?.projectID
     }
     public func run(project: Project, device: SimulatorDevice, globalSDK: String?) {
-        guard !shuttingDown else { return }
+        let key = SessionKey(projectID: project.id, deviceID: device.id)
+        guard !shuttingDown, !rerunningIDs.contains(key) else { return }
         let session = session(for: project.id, deviceID: device.id)
         guard session.canRun else { return }
         session.prepare(project: project, device: device)
@@ -48,8 +51,9 @@ public struct SessionKey: Hashable {
                 let sdk = try FlutterSDKResolver.resolve(project: project, global: globalSDK)
                 session.setPreparationStage(L10n.text("Checking Flutter SDK"))
                 session.append(L10n.text("Checking SDK: {0}", "\(sdk)"))
-                _ = try await FlutterSDKResolver.check(sdk)
+                let version = try await FlutterSDKResolver.check(sdk)
                 try Task.checkCancellation()
+                session.setFlutterVersion(version)
                 session.setPreparationStage(
                     device.targetPlatform == "ios"
                         ? L10n.text("Reading Xcode settings") : L10n.text("Preparing project"))
@@ -76,6 +80,21 @@ public struct SessionKey: Hashable {
         }
         session.setPreparationTask(task)
     }
+    public func rerun(project: Project, device: SimulatorDevice, globalSDK: String?) {
+        let key = SessionKey(projectID: project.id, deviceID: device.id)
+        guard !shuttingDown, !rerunningIDs.contains(key), !foregroundIDs.contains(key),
+            let session = sessions[key], session.canRerun
+        else { return }
+        rerunningIDs.insert(key)
+        session.stop()
+        Task {
+            while session.hasWork { try? await Task.sleep(nanoseconds: 50_000_000) }
+            // Remove the reservation and start preparation in the same actor turn.
+            rerunningIDs.remove(key)
+            guard sessions[key] === session else { return }
+            run(project: project, device: device, globalSDK: globalSDK)
+        }
+    }
     public func foreground(_ id: SessionKey) async {
         guard !foregroundIDs.contains(id), let session = sessions[id], session.state == .running,
             let device = session.device, let bundleID = session.bundleID
@@ -93,7 +112,7 @@ public struct SessionKey: Hashable {
         for session in sessions.values where session.hasWork { session.stop() }
     }
     public func removeInactiveSession(_ id: SessionKey) {
-        guard sessions[id]?.hasWork != true else { return }
+        guard sessions[id]?.hasWork != true, !rerunningIDs.contains(id) else { return }
         observations.removeValue(forKey: id)
         sessions.removeValue(forKey: id)
     }

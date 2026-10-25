@@ -324,7 +324,7 @@ final class ControlPanel: NSPanel {
         size.height = model.horizontalPanelHeight
         let layout = PanelPlacement.attachedLayout(
             window: windowFrame, horizontalSize: size,
-            verticalSize: CGSize(width: 50, height: 374),
+            verticalSize: CGSize(width: 50, height: 416),
             visible: visible, side: model.panelSide)
         model.actualPanelSide = layout.side
         if model.panelWidth != layout.frame.width { model.panelWidth = layout.frame.width }

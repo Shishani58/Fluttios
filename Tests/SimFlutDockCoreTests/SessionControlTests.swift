@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 
@@ -68,7 +69,8 @@ final class SessionControlTests: XCTestCase {
                 send({"jsonrpc":"2.0", "method":"notifications/initialized"})
                 tools = rpc("tools/list", {})["tools"]
                 assert {tool["name"] for tool in tools} == {
-                    "list_sessions", "get_session", "read_logs", "hot_reload", "hot_restart", "stop_session"}, tools
+                    "list_sessions", "get_session", "read_logs", "hot_reload", "hot_restart", "stop_session",
+                    "list_projects", "list_devices", "start_session", "rerun_session", "open_deep_link", "take_screenshot"}, tools
                 session_id, launch_id = sys.argv[3:5]
                 listed = call("list_sessions", {})["sessions"]
                 assert len(listed) == 2, listed
@@ -138,7 +140,9 @@ final class SessionControlTests: XCTestCase {
         let reload = try await invoke(control, "hot_reload", command(first, requestID: "reload-first"))
         XCTAssertEqual(reload["status"] as? String, "completed")
         let reloaded = try XCTUnwrap(reload["session"] as? [String: Any])
-        XCTAssertEqual(reloaded["available_actions"] as? [String], ["hot_reload", "hot_restart", "stop_session"])
+        XCTAssertEqual(
+            reloaded["available_actions"] as? [String],
+            ["hot_reload", "hot_restart", "stop_session", "rerun_session", "open_deep_link", "take_screenshot"])
         XCTAssertEqual(first.logs.filter { $0.text == "command:app.restart:false" }.count, 1)
         XCTAssertFalse(second.logs.contains { $0.text.hasPrefix("command:") })
 
@@ -245,7 +249,7 @@ final class SessionControlTests: XCTestCase {
         try await wait { session.state == .running }
         let details = try await invoke(control, "get_session", ["session_id": session.id.uuidString])
         let snapshot = try XCTUnwrap(details["session"] as? [String: Any])
-        XCTAssertEqual(snapshot["available_actions"] as? [String], ["stop_session"])
+        XCTAssertEqual(snapshot["available_actions"] as? [String], ["stop_session", "rerun_session"])
         _ = try await invoke(
             control, "hot_restart", command(session, requestID: "release-restart"), error: "ACTION_UNAVAILABLE")
         XCTAssertFalse(session.logs.contains { $0.text.hasPrefix("command:") })
@@ -301,6 +305,154 @@ final class SessionControlTests: XCTestCase {
         let boundedBytes = try await invoke(control, "read_logs", ["session_id": session.id.uuidString, "limit": 200])
         XCTAssertEqual((boundedBytes["entries"] as? [[String: Any]])?.count, 4)
         XCTAssertEqual(boundedBytes["has_more"] as? Bool, true)
+    }
+
+    @MainActor func testSavedProjectsRequireAnExplicitFreshDeviceWithoutChangingPanelSelection() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try "name: test_project\ndependencies:\n  flutter:\n    sdk: flutter\n".write(
+            to: directory.appendingPathComponent("pubspec.yaml"), atomically: true, encoding: .utf8)
+        let store = ProjectStore(file: directory.appendingPathComponent("projects.json"))
+        var project = try store.open(directory)
+        project.launch.entrypoint = "lib/staging.dart"
+        project.launch.setMode(.profile)
+        store.update(project)
+        let manager = SessionManager(
+            simulators: SimulatorService(cacheFile: directory.appendingPathComponent("devices.json")))
+        let control = SessionControl(manager: manager, store: store)
+        let listed = try await invoke(control, "list_projects")
+        let row = try XCTUnwrap((listed["projects"] as? [[String: Any]])?.first)
+        let config = try XCTUnwrap(row["configuration"] as? [String: Any])
+        XCTAssertEqual(row["id"] as? String, project.id.uuidString)
+        XCTAssertEqual(config["entrypoint"] as? String, "lib/staging.dart")
+        XCTAssertEqual(config["mode"] as? String, "profile")
+        _ = try await invoke(
+            control, "start_session",
+            ["project_id": project.id.uuidString, "device_id": "unknown", "request_id": "start"],
+            error: "DEVICE_UNAVAILABLE")
+        _ = try await invoke(
+            control, "start_session",
+            ["project_id": UUID().uuidString, "device_id": "unknown", "request_id": "missing"],
+            error: "PROJECT_NOT_FOUND")
+        XCTAssertTrue(manager.sessions.isEmpty)
+        XCTAssertEqual(store.selectedID, project.id)
+    }
+
+    @MainActor func testRerunStopsOnlyTheExplicitLaunchAndRetriesDoNotRerunAgain() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let manager = SessionManager(simulators: SimulatorService())
+        let control = SessionControl(manager: manager)
+        let project = Project(name: "Rerun", path: "/nonexistent-fluttios-rerun-test")
+        let device = SimulatorDevice(udid: "D1", name: "First", state: "Booted")
+        let other = SimulatorDevice(udid: "D2", name: "Second", state: "Booted")
+        let first = manager.session(for: project.id, deviceID: device.id)
+        let second = manager.session(for: project.id, deviceID: other.id)
+        // Fixture controls only Flutter process I/O, while real SessionManager owns the rerun.
+        var fixtureProject = project
+        fixtureProject.path = "/tmp"
+        try fixture.start(first, project: fixtureProject, device: device)
+        try fixture.start(second, project: fixtureProject, device: other)
+        defer {
+            first.stop()
+            second.stop()
+        }
+        try await wait { first.state == .running && second.state == .running }
+        let original = first.launchID
+        let args = command(first, requestID: "one-rerun")
+        let result = try await invoke(control, "rerun_session", args)
+        XCTAssertEqual(result["status"] as? String, "started")
+        XCTAssertNotEqual(first.launchID, original)
+        let newLaunch = first.launchID
+        let retry = try await invoke(control, "rerun_session", args)
+        XCTAssertTrue(NSDictionary(dictionary: result).isEqual(to: retry))
+        XCTAssertEqual(first.launchID, newLaunch)
+        XCTAssertTrue(second.isAlive)
+        _ = try await invoke(
+            control, "take_screenshot", commandWithLaunch(first, launch: original, requestID: "stale-capture"),
+            error: "STALE_LAUNCH")
+        _ = try await invoke(
+            control, "rerun_session", args.merging(["request_id": "new-old-launch"]) { _, new in new },
+            error: "STALE_LAUNCH")
+        await manager.waitForStop()
+    }
+
+    @MainActor func testScreenshotReturnsBoundedNativeImageForExactAndroidDeviceAndRetriesReuseCapture() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let tools = directory.appendingPathComponent("platform-tools")
+        try FileManager.default.createDirectory(at: tools, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = try XCTUnwrap(
+            NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: 2400, pixelsHigh: 1200,
+                bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false, colorSpaceName: .deviceRGB,
+                bytesPerRow: 0, bitsPerPixel: 0))
+        memset(source.bitmapData!, 255, source.bytesPerRow * source.pixelsHigh)
+        let png = try XCTUnwrap(source.representation(using: .png, properties: [:]))
+        let input = directory.appendingPathComponent("screen.png")
+        try png.write(to: input)
+        let invocations = directory.appendingPathComponent("captures.txt")
+        let adb = tools.appendingPathComponent("adb")
+        // Real process boundary: the stand-in emits only a PNG and records invocation arguments.
+        try "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '\(invocations.path)'\n/bin/cat '\(input.path)'\n".write(
+            to: adb, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: adb.path)
+        let previous = ProcessInfo.processInfo.environment["ANDROID_SDK_ROOT"]
+        setenv("ANDROID_SDK_ROOT", directory.path, 1)
+        defer { if let previous { setenv("ANDROID_SDK_ROOT", previous, 1) } else { unsetenv("ANDROID_SDK_ROOT") } }
+        let manager = SessionManager(simulators: SimulatorService())
+        let control = SessionControl(manager: manager)
+        let project = Project(name: "Screenshot", path: "/tmp")
+        let device = SimulatorDevice(
+            udid: "emulator-5554", name: "Android", state: "Booted", targetPlatform: "android-arm64")
+        let session = manager.session(for: project.id, deviceID: device.id)
+        try fixture.start(session, project: project, device: device)
+        defer { session.stop() }
+        try await wait { session.state == .running }
+        let args = command(session, requestID: "capture")
+        let request = try JSONSerialization.data(withJSONObject: ["tool": "take_screenshot", "arguments": args])
+        let responseData = await control.handle(request)
+        let response = try XCTUnwrap(try JSONSerialization.jsonObject(with: responseData) as? [String: Any])
+        XCTAssertEqual(response["isError"] as? Bool, false)
+        let image = try XCTUnwrap((response["content"] as? [[String: Any]])?.last)
+        XCTAssertEqual(image["type"] as? String, "image")
+        XCTAssertEqual(image["mimeType"] as? String, "image/jpeg")
+        let data = try XCTUnwrap(Data(base64Encoded: XCTUnwrap(image["data"] as? String)))
+        XCTAssertLessThanOrEqual(data.count, 1_000_000)
+        let jpeg = try XCTUnwrap(NSBitmapImageRep(data: data))
+        XCTAssertEqual(jpeg.pixelsWide, 1600)
+        XCTAssertEqual(jpeg.pixelsHigh, 800)
+        // A valid image envelope must contain the captured pixels, not an empty canvas.
+        let color = try XCTUnwrap(jpeg.colorAt(x: 800, y: 400)?.usingColorSpace(.deviceRGB))
+        XCTAssertGreaterThan(color.redComponent, 0.95)
+        XCTAssertGreaterThan(color.greenComponent, 0.95)
+        XCTAssertGreaterThan(color.blueComponent, 0.95)
+        let structured = try XCTUnwrap(response["structuredContent"] as? [String: Any])
+        let path = try XCTUnwrap(structured["image_path"] as? String)
+        XCTAssertEqual(try Data(contentsOf: URL(fileURLWithPath: path)), data)
+        let permissions = try FileManager.default.attributesOfItem(atPath: path)[.posixPermissions] as? NSNumber
+        XCTAssertEqual(permissions?.intValue, 0o600)
+        _ = try await invoke(control, "take_screenshot", args)
+        XCTAssertEqual(try String(contentsOf: invocations), "-s emulator-5554 exec-out screencap -p\n")
+        await manager.waitForStop()
+    }
+
+    @MainActor func testAndroidLinkURLRemainsOneLiteralShellArgument() async throws {
+        let url = "myapp://path?a=1&b='quote';x=$(uname)"
+        let args = try AndroidDeviceCommand.deepLinkArguments(deviceID: "emulator-5554", url: url)
+        XCTAssertEqual(Array(args.prefix(3)), ["-s", "emulator-5554", "shell"])
+        // Run a real shell, the same parsing boundary adb uses, without opening any URL.
+        let result = try await ToolRunner.run("/bin/sh", ["-c", "printf '%s' " + args.last!]).checked()
+        XCTAssertEqual(String(decoding: result.stdout, as: UTF8.self), "myapp://path?a=1&b='quote';x=$(uname)")
+    }
+
+    @MainActor private func commandWithLaunch(_ session: FlutterSession, launch: UUID, requestID: String) -> [String:
+        Any]
+    {
+        ["session_id": session.id.uuidString, "launch_id": launch.uuidString, "request_id": requestID]
     }
 
     @MainActor private func command(_ session: FlutterSession, requestID: String) -> [String: Any] {

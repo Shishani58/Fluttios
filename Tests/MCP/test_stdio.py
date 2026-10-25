@@ -111,9 +111,45 @@ class StdioTests(unittest.TestCase):
         self.assertEqual(responses[1], {"jsonrpc": "2.0", "id": 2, "result": {}})
         tools = responses[2]["result"]["tools"]
         self.assertEqual([item["name"] for item in tools],
-                         ["list_sessions", "get_session", "read_logs", "hot_reload", "hot_restart", "stop_session"])
-        self.assertTrue(tools[-1]["annotations"]["destructiveHint"])
+                         ["list_sessions", "get_session", "read_logs", "hot_reload", "hot_restart", "stop_session",
+                          "list_projects", "list_devices", "start_session", "rerun_session", "open_deep_link", "take_screenshot"])
+        self.assertTrue(next(item for item in tools if item["name"] == "stop_session")["annotations"]["destructiveHint"])
         self.assertEqual([item["error"]["code"] for item in responses[3:]], [-32602] * 11 + [-32601])
+
+    def test_new_tools_preserve_explicit_targets_and_native_image_content(self):
+        mutation = {"session_id": SESSION, "launch_id": LAUNCH, "request_id": "new-op"}
+        operations = [
+            ("list_projects", {}), ("list_devices", {"project_id": SESSION}),
+            ("start_session", {"project_id": SESSION, "device_id": "emulator-5554", "request_id": "start"}),
+            ("rerun_session", mutation),
+            ("open_deep_link", {**mutation, "url": "myapp://profile?a=1&b=2"}),
+            ("take_screenshot", mutation),
+        ]
+        image = {"type": "image", "mimeType": "image/jpeg", "data": "aW1hZ2U="}
+        reply = json.dumps({"content": [image], "structuredContent": {}, "isError": False}).encode() + b"\n"
+        with backend(len(operations), lambda _: reply) as (path, received):
+            responses = self.run_bridge([INITIALIZE] + [
+                request(index, "tools/call", {"name": name, "arguments": arguments})
+                for index, (name, arguments) in enumerate(operations, 2)], path)
+        self.assertCountEqual(received, [{"tool": name, "arguments": arguments} for name, arguments in operations])
+        self.assertTrue(all(response["result"]["content"] == [image] for response in responses[1:]))
+
+    def test_new_tool_invalid_targets_never_reach_backend(self):
+        mutation = {"session_id": SESSION, "launch_id": LAUNCH, "request_id": "operation"}
+        operations = [
+            ("list_devices", {"project_id": "invalid"}),
+            ("start_session", {"project_id": SESSION, "device_id": "", "request_id": "start"}),
+            ("start_session", {"project_id": SESSION, "device_id": "D\n2", "request_id": "start"}),
+            ("start_session", {"project_id": SESSION, "device_id": "\ud800", "request_id": "start"}),
+            ("rerun_session", {"session_id": SESSION, "request_id": "op"}),
+            ("open_deep_link", {**mutation, "url": 123}),
+            ("open_deep_link", {**mutation, "url": "x" * 8193}),
+            ("take_screenshot", {**mutation, "path": "/tmp/private"}),
+        ]
+        responses = self.run_bridge([INITIALIZE] + [
+            request(index, "tools/call", {"name": name, "arguments": arguments})
+            for index, (name, arguments) in enumerate(operations, 2)], "/not-a-socket")
+        self.assertEqual([response["error"]["code"] for response in responses[1:]], [-32602] * len(operations))
 
     def test_framing_recovery_and_unavailable_app_do_not_echo_input(self):
         # Oversized/malformed inputs cannot desynchronize later requests or leak paths.

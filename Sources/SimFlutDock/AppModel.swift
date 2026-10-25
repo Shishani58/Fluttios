@@ -158,7 +158,7 @@ import UniformTypeIdentifiers
     var selectedSessionKey: SessionKey? { store.selected.flatMap { sessionKey(for: $0) } }
     var selectedSession: FlutterSession? { selectedSessionKey.flatMap { manager.sessions[$0] } }
     var verticalPanel: Bool { actualPanelSide?.isVertical == true }
-    var panelHeight: CGFloat { verticalPanel ? 374 : horizontalPanelHeight }
+    var panelHeight: CGFloat { verticalPanel ? 416 : horizontalPanelHeight }
     var launchBusy: Bool { checkingLaunchDevice || selectedSession?.state.isBusy == true }
     var launchProgressMessage: String? {
         checkingLaunchDevice ? L10n.text("Searching for devices…") : selectedSession?.progressMessage
@@ -306,12 +306,17 @@ import UniformTypeIdentifiers
             if response == .OK, let url = picker.url { MainActor.assumeIsolated { completion(url.path) } }
         }
     }
-    func run() {
-        guard !checkingLaunchDevice, selectedSession?.canRun != false else { return }
-        guard !simulatorToolBusy else {
-            message = L10n.text("Wait for the simulator action to finish before pressing Run.")
-            return
+    var canRunOrRerun: Bool {
+        guard !checkingLaunchDevice, !manager.shuttingDown, !simulatorToolBusy else { return false }
+        if let key = selectedSessionKey,
+            manager.rerunningIDs.contains(key) || manager.foregroundIDs.contains(key)
+        {
+            return false
         }
+        return selectedSession.map { $0.canRun || $0.canRerun } ?? true
+    }
+    func run() {
+        guard canRunOrRerun else { return }
         guard let selectedProject = store.selected else {
             openProject()
             return
@@ -349,8 +354,17 @@ import UniformTypeIdentifiers
             project.devicePlatform = device.targetPlatform
             project.launch = project.launch.usingProjectDefaults()
             store.update(project)
-            manager.run(project: project, device: device, globalSDK: globalSDK)
+            if manager.sessions[SessionKey(projectID: project.id, deviceID: device.id)]?.canRerun == true {
+                manager.rerun(project: project, device: device, globalSDK: globalSDK)
+            } else {
+                manager.run(project: project, device: device, globalSDK: globalSDK)
+            }
         }
+    }
+    var canOpenDevTools: Bool { selectedSession?.canOpenDevTools == true }
+    func openDevTools() {
+        guard let session = selectedSession, session.canOpenDevTools, let url = session.devToolsURL else { return }
+        if !NSWorkspace.shared.open(url) { message = L10n.text("Could not open DevTools in the browser.") }
     }
     func restart(full: Bool) {
         guard let key = selectedSessionKey, let session = selectedSession,
