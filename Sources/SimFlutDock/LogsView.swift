@@ -7,6 +7,7 @@ struct LogsView: View {
     @State private var query = ""
     @State private var errorsOnly = false
     @State private var followLogs = true
+    @FocusState private var searchFocused: Bool
     @AppStorage("logSourceEditor") private var editor = "default"
 
     private var entries: [LogEntry] { model.selectedSession?.logs ?? [] }
@@ -15,40 +16,115 @@ struct LogsView: View {
     }
 
     var body: some View {
+        let filtered = visibleEntries
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 16) {
                 ProjectMenu(model: model)
+                    .frame(maxWidth: 180, alignment: .leading)
                 DeviceMenu(model: model)
-                Spacer()
-                Button(L10n.text("Copy")) {
+                    .frame(maxWidth: 260, alignment: .leading)
+                Spacer(minLength: 0)
+                Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(
                         model.selectedSession?.logs.map { $0.text }.joined(separator: "\n") ?? "", forType: .string)
+                } label: {
+                    Label(L10n.text("Copy all logs"), systemImage: "doc.on.doc")
                 }
+                .labelStyle(.iconOnly)
+                .help(L10n.text("Copy all logs"))
                 .disabled(entries.isEmpty)
-                Button(L10n.text("Error report"), action: copyReport)
+                Button(action: copyReport) {
+                    Label(L10n.text("Error report"), systemImage: "doc.badge.ellipsis")
+                }
+                    .labelStyle(.iconOnly)
                     .help(L10n.text("Copy error report"))
                     .accessibilityLabel(L10n.text("Copy error report"))
                     .disabled(entries.isEmpty)
-                Button(L10n.text("Clear")) { model.selectedSession?.clearLogs() }
-            }.padding()
+                Button { model.selectedSession?.clearLogs() } label: {
+                    Label(L10n.text("Clear"), systemImage: "trash")
+                }
+                .labelStyle(.iconOnly)
+                .help(L10n.text("Clear"))
+                .disabled(entries.isEmpty)
+            }
+            .controlSize(.regular)
+            .padding(12)
+            .fixedSize(horizontal: false, vertical: true)
             Divider()
-            HStack {
-                TextField(L10n.text("Search logs"), text: $query)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityLabel(L10n.text("Search logs"))
+            HStack(spacing: 12) {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+                    TextField(L10n.text("Search logs"), text: $query)
+                        .textFieldStyle(.plain)
+                        .accessibilityLabel(L10n.text("Search logs"))
+                        .focused($searchFocused)
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(L10n.text("Clear search"))
+                    }
+                }
+                .padding(.horizontal, 8).padding(.vertical, 6)
+                .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(
+                    searchFocused ? Color.accentColor : Color.primary.opacity(0.12),
+                    lineWidth: searchFocused ? 2 : 1))
                 Toggle(L10n.text("Errors only"), isOn: $errorsOnly)
                     .toggleStyle(.checkbox)
                     .fixedSize()
-                Button {
-                    followLogs.toggle()
-                } label: {
-                    Label(
-                        L10n.text(followLogs ? "Pause scrolling" : "Resume scrolling"),
-                        systemImage: followLogs ? "pause" : "play")
+                Toggle(isOn: $followLogs) {
+                    Label(L10n.text("Autoscroll"), systemImage: "arrow.down.to.line")
                 }
-                .labelStyle(.iconOnly)
+                .toggleStyle(.button)
+                .fixedSize()
                 .help(L10n.text(followLogs ? "Pause scrolling" : "Resume scrolling"))
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            Group {
+                if filtered.isEmpty {
+                    VStack(spacing: 10) {
+                        Image(systemName: entries.isEmpty ? "text.alignleft" : "magnifyingglass")
+                            .font(.system(size: 28)).foregroundStyle(.secondary).accessibilityHidden(true)
+                        Text(L10n.text(entries.isEmpty ? "No logs yet" : "No matching logs"))
+                            .font(.headline)
+                        Text(L10n.text(entries.isEmpty
+                            ? "Logs will appear here after you press Run in the panel."
+                            : "Try another search or turn off the error filter."))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        if !entries.isEmpty {
+                            Button(L10n.text("Reset filters")) {
+                                query = ""
+                                errorsOnly = false
+                            }
+                        }
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    LogConsole(
+                        entries: filtered, sessionID: model.selectedSession?.id,
+                        followLogs: followLogs,
+                        projectPath: model.selectedSession?.launchProject?.path ?? model.store.selected?.path,
+                        editor: editor)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(nsColor: .textBackgroundColor))
+            Divider()
+            HStack(spacing: 8) {
+                Text(L10n.text("{0} of {1} entries", "\(filtered.count)", "\(entries.count)"))
+                    .monospacedDigit()
+                Image(systemName: "info.circle")
+                    .help(L10n.text("Up to 2000 entries per session • quitting the app requires a new Run"))
+                    .accessibilityLabel(L10n.text("Up to 2000 entries per session • quitting the app requires a new Run"))
+                Spacer(minLength: 12)
                 Picker(L10n.text("Open source in"), selection: $editor) {
                     Text(L10n.text("Default editor")).tag("default")
                     if NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") != nil {
@@ -60,26 +136,22 @@ struct LogsView: View {
                         Text("Cursor").tag("cursor")
                     }
                 }
-                .labelsHidden()
+                .fixedSize()
                 .help(L10n.text("Open source in"))
-                .frame(width: 190)
-            }.padding(.horizontal).padding(.vertical, 8)
-            Divider()
-            if visibleEntries.isEmpty {
-                ContentUnavailableView(
-                    L10n.text(entries.isEmpty ? "No logs yet" : "No matching logs"),
-                    systemImage: "text.alignleft")
-            } else {
-                LogConsole(
-                    entries: visibleEntries, sessionID: model.selectedSession?.id,
-                    followLogs: followLogs,
-                    projectPath: model.selectedSession?.launchProject?.path ?? model.store.selected?.path,
-                    editor: editor)
             }
-            Text(L10n.text("Up to 2000 entries per session • quitting the app requires a new Run")).font(.caption)
-                .foregroundStyle(.secondary).padding(8)
-        }.frame(minWidth: 700, minHeight: 400)
-            .onChange(of: model.selectedSession?.id) { _, _ in followLogs = true }
+            .font(.caption).foregroundStyle(.secondary)
+            .controlSize(.small)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(minWidth: 700, minHeight: 400)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onChange(of: model.selectedSession?.id) { _, _ in followLogs = true }
+        .background {
+            Button("") { searchFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .hidden().accessibilityHidden(true)
+        }
     }
 
     private func copyReport() {
@@ -189,9 +261,11 @@ struct LogConsole: NSViewRepresentable {
                 || visible.maxY >= text.bounds.maxY - 24)
         let selection = text.selectedRange()
         let output = NSMutableAttributedString(string: "")
-        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         let paragraph = NSMutableParagraphStyle()
-        paragraph.paragraphSpacing = 4
+        paragraph.lineSpacing = 2
+        paragraph.paragraphSpacing = 6
+        paragraph.headIndent = ("00:00:00  " as NSString).size(withAttributes: [.font: font]).width
         if changedSession || changedPackages {
             coordinator.sourceLocations.removeAll()
             coordinator.packageModified = packageModified
@@ -216,6 +290,16 @@ struct LogConsole: NSViewRepresentable {
                         .font: font, .foregroundColor: entry.isError ? NSColor.systemRed : NSColor.labelColor,
                         .paragraphStyle: paragraph,
                     ]))
+            let message = entry.text as NSString
+            let lineBreak = message.range(of: "\n")
+            if lineBreak.location != NSNotFound {
+                let continuation = paragraph.mutableCopy() as! NSMutableParagraphStyle
+                continuation.firstLineHeadIndent = paragraph.headIndent
+                let offset = NSMaxRange(lineBreak)
+                output.addAttribute(
+                    .paragraphStyle, value: continuation,
+                    range: NSRange(location: start + offset, length: message.length - offset))
+            }
             if let projectPath {
                 let locations =
                     coordinator.sourceLocations[entry.id]

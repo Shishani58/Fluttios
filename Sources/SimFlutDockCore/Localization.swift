@@ -97,6 +97,14 @@ public enum L10n {
         "Could not open DevTools in the browser.": "Не удалось открыть DevTools в браузере.",
         "Copy error report": "Скопировать отчёт об ошибке",
         "Search logs": "Поиск по логам",
+        "Copy all logs": "Копировать все логи",
+        "Autoscroll": "Автопрокрутка",
+        "{0} of {1} entries": "{0} из {1} записей",
+        "Logs will appear here after you press Run in the panel.":
+            "Логи появятся здесь после нажатия Run на панели.",
+        "Try another search or turn off the error filter.":
+            "Измените запрос или отключите фильтр ошибок.",
+        "Reset filters": "Сбросить фильтры",
         "Errors only": "Только ошибки",
         "Pause scrolling": "Приостановить прокрутку",
         "Resume scrolling": "Продолжить прокрутку",
