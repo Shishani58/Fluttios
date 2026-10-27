@@ -58,24 +58,46 @@ import Foundation
         try await resumePausedIsolates()
     }
     public func resumePausedIsolates() async throws {
-        let vm = try await rpc.request("getVM", params: [:], timeout: 20)
-        let result = vm["result"] as? [String: Any]
-        guard let isolates = result?["isolates"] as? [[String: Any]], !isolates.isEmpty else {
-            throw SimFlutDockError.message(L10n.text("Dart VM did not return the main isolate."))
-        }
-        for isolate in isolates {
-            guard let id = isolate["id"] as? String, isolate["isSystemIsolate"] as? Bool != true else { continue }
-            try await resumeStartupIsolate(id)
+        try await recoverStartupTimeout {
+            let vm = try await rpc.request("getVM", params: [:], timeout: 20)
+            let result = vm["result"] as? [String: Any]
+            guard let isolates = result?["isolates"] as? [[String: Any]], !isolates.isEmpty else {
+                throw SimFlutDockError.message(L10n.text("Dart VM did not return the main isolate."))
+            }
+            for isolate in isolates {
+                guard let id = isolate["id"] as? String, isolate["isSystemIsolate"] as? Bool != true else { continue }
+                try await resumeStartupIsolate(id)
+            }
         }
     }
     private func resumeStartupIsolate(_ id: String) async throws {
         guard !closed, resumingIsolates.insert(id).inserted else { return }
         defer { resumingIsolates.remove(id) }
-        let detail = try await rpc.request("getIsolate", params: ["isolateId": id], timeout: 20)
-        let state = (detail["result"] as? [String: Any])?["pauseEvent"] as? [String: Any]
-        // Recheck: an event may arrive after the snapshot already resumed this isolate.
-        if !closed, state?["kind"] as? String == "PauseStart" {
-            _ = try await rpc.request("resume", params: ["isolateId": id], timeout: 20)
+        try await recoverStartupTimeout(isolateID: id) {
+            let detail = try await rpc.request("getIsolate", params: ["isolateId": id], timeout: 20)
+            let state = (detail["result"] as? [String: Any])?["pauseEvent"] as? [String: Any]
+            // A timed-out resume may have succeeded. Recheck before retrying so a
+            // later breakpoint is never resumed by a stale startup event.
+            if !closed, state?["kind"] as? String == "PauseStart" {
+                _ = try await rpc.request("resume", params: ["isolateId": id], timeout: 20)
+            }
+        }
+    }
+    private func recoverStartupTimeout(
+        isolateID: String = "VM", _ operation: () async throws -> Void
+    ) async throws {
+        for attempt in 0..<2 {
+            guard !closed else { return }
+            do {
+                try await operation()
+                return
+            } catch let error as SimFlutDockError {
+                guard case .timeout = error else { throw error }
+                if attempt == 1 {
+                    // An RPC timeout does not establish that the WebSocket disconnected.
+                    onOutput?(Data("[Dart VM][\(isolateID)] \(error.localizedDescription)\n".utf8), true)
+                }
+            }
         }
     }
     /// Heap usage of the main Dart isolate; not the application's total RSS.
